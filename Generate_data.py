@@ -5,6 +5,7 @@ from copy import deepcopy as copy
 from tick.hawkes import (SimuHawkes, HawkesKernelTimeFunc, HawkesKernelExp, HawkesEM)
 from tick.base import TimeFunction
 from tick.plot import plot_hawkes_kernels
+import sys
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['font.family'] = 'Calibri'
 
@@ -27,7 +28,7 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
 
     for c in range(nbClasses):
         for c2 in range(nbClasses):
-            if c!=c2: continue  # Univariate Hawkes process
+            #if c!=c2: continue  # If uncommented: univariate Hawkes process
             t_values = np.linspace(0, maxdt, 100)
             y_values = kernel(t_values, means, sigs, alpha[c,c2])
 
@@ -44,7 +45,7 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
 
     for c in range(nbClasses):
         for c2 in range(nbClasses):
-            if c!=c2: continue  # Univariate Hawkes process
+            #if c!=c2: continue  # If uncommented: univariate Hawkes process
             hawkes.set_kernel(c, c2, kernels[c][c2])
 
     hawkes.simulate()
@@ -168,27 +169,24 @@ def plotProcess(events, means, sigs, alpha, whichclus=0):
 
 def generate(params):
     nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder = params
-    maxdt = max(means)+3*max(sigs)
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
-        a = np.random.random((len(means)))
-        alpha[c,c]=a/np.sum(a)
-        for c2 in range(nbClasses):
-            if c==c2: continue
-            a = np.random.random((len(means)))
-            alpha[c,c2] = 0
+        a = np.random.random((nbClasses, len(means)))**2
+        alpha[c]=a/np.sum(a)
     alpha = np.array(alpha)
 
+    print(alpha)
+
     # Get timestamps and temporal clusters
-    events = []
     events, hawkes = simulHawkes(lamb0, alpha, means, sigs, run_time=run_time)
     print(len(events), "events")
-    dofit = False
+    dofit = True
     if dofit:
-        em = HawkesEM(15, kernel_size=30, n_threads=8, verbose=False, tol=1e-3)
+        em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
         em.fit(hawkes.timestamps)
         fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
         plt.show()
+        sys.exit()
 
     # Get the wanted temporal overlap
     if overlap_temp >=0 and nbClasses==2:
@@ -230,7 +228,7 @@ sigs = np.array([0.5, 0.5, 0.5])
 folder = "data/Synth/"
 np.random.seed(1564)
 #params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
-params = (2, 60, voc_per_class, 0.3, 0.4, voc_per_class, perc_rand, words_per_obs, 0, lamb0, means, sigs, folder)
+params = (2, 3000, voc_per_class, 0.3, 0.4, voc_per_class, perc_rand, words_per_obs, 0, lamb0, means, sigs, folder)
 generate(params)
 pause()
 nbRuns = 10
