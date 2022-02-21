@@ -192,7 +192,7 @@ def update_triggering_kernel_optim(cluster):
 	log_priors = cluster.log_priors
 	logLikelihood = cluster.likelihood_samples
 	log_update_weight = log_priors + logLikelihood
-	#log_update_weight = log_update_weight - np.max(log_update_weight)  # Prevents overflow
+	log_update_weight = log_update_weight - np.max(log_update_weight)  # Prevents overflow
 	update_weight = np.exp(log_update_weight)
 
 	#update_weight[update_weight<np.mean(update_weight)]=0.  # Removes noise of obviously unfit alpha samples
