@@ -1,7 +1,9 @@
 import numpy as np
-from scipy.special import erfc, gammaln
-from scipy.stats import dirichlet as dirsp
+from scipy.special import erfc, gammaln, gamma
 from copy import deepcopy as copy
+from scipy.stats import dirichlet as dir
+
+ones = {i: np.ones((i)) for i in range(1, 100)}
 
 class Document(object):
 	def __init__(self, index, timestamp, word_distribution, word_count):
@@ -23,21 +25,8 @@ class Cluster(object):
 		self.triggers = np.zeros((num_samples), dtype=np.float)
 		self.integ_triggers = np.ones((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
-		alphas = []; log_priors = []
-
-		for _ in range(num_samples):
-			alpha = np.array([np.nan])
-			log_prior = 0
-			while np.isnan(alpha).any():
-				alpha = dirichlet(alpha0)
-				alpha[alpha<1e-15] = 1e-20
-				alpha = alpha/np.sum(alpha)
-				log_prior = log_dirichlet_PDF(alpha, alpha0)
-			alphas.append(np.array(alpha))
-			log_priors.append(log_prior)
-
-		self.alphas = np.array(alphas)
-		self.log_priors = np.array(log_priors)
+		self.alphas = dirichlet(alpha0, num_samples)
+		self.log_priors = log_dirichlet_PDF(self.alphas, alpha0, num_samples)
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -65,13 +54,13 @@ class Particle(object):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
 
-def dirichlet(prior):
-	''' Draw 1-D samples from a dirichlet distribution to multinomial distritbution. Return a multinomial probability distribution.
-		@param:
-			1.prior: Parameter of the distribution (k dimension for sample of dimension k).
-		@rtype: 1-D numpy array
+def dirichlet(prior, num_samples=1):
+	''' Draw 1-D samples from a dirichlet distribution
 	'''
-	return np.random.dirichlet(prior).squeeze()
+	draws = np.random.dirichlet(prior, num_samples)
+	if num_samples==1:
+		draws=draws[0]
+	return draws
 
 def multinomial(exp_num, probabilities):
 	''' Draw samples from a multinomial distribution.
@@ -96,8 +85,12 @@ def EfficientImplementation(tn, reference_time, bandwidth, epsilon = 1e-5):
 	tu = tn - ( max_ref_time + np.sqrt( -2 * max_bandwidth * np.log(0.5 * epsilon * np.sqrt(2 * np.pi * max_bandwidth**2)) ))
 	return tu
 
-def log_dirichlet_PDF(alpha, alpha0):
-	return dirsp.logpdf(alpha, alpha0)
+def log_dirichlet_PDF(alpha, alpha0, num_samples):
+	''' return the logpdf for each entry of a list of dirichlet draws
+	'''
+	lg = len(alpha[0])
+	if lg not in ones: ones[lg] = np.ones((lg))
+	return (np.log(alpha)*(alpha0[None, :]-1)).dot(ones[lg]) + gammaln(alpha0.dot(ones[lg])) - gammaln(alpha0).dot(ones[lg])
 
 def RBF_kernel(reference_time, time_interval, bandwidth):
 	''' RBF kernel for Hawkes process.
@@ -129,13 +122,25 @@ def triggering_kernel(alpha, reference_time, time_intervals, bandwidth, donotsum
 		if donotsum:
 			return alpha.dot(RBF.T)
 		#return np.sum(np.sum(alpha * RBF_kernel(reference_time, time_intervals, bandwidth), axis = 1), axis = 1)
-		return alpha.dot(np.ones((RBF.shape[0])).dot(RBF)).dot(np.ones((1)))
+		#return alpha.dot(np.ones((RBF.shape[0])).dot(RBF)).dot(np.ones((1)))
+		lg = RBF.shape[0]
+		if lg not in ones: ones[lg] = np.ones((lg))
+		rbfdotted = alpha.dot(ones[lg].dot(RBF))
+
+		return rbfdotted[0]
+
 	else:
 		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)
 		#return np.sum(np.sum(alpha * RBF_kernel(reference_time, time_intervals, bandwidth), axis = 0), axis = 0)
 		if donotsum:
 			return RBF.dot(alpha)
-		return RBF.dot(alpha).dot(np.ones((len(RBF))))
+
+		rbfdotted = RBF.dot(alpha)
+		lg = len(rbfdotted)
+		if lg==1:
+			return rbfdotted[0]
+		if lg not in ones: ones[lg] = np.ones((lg))
+		return rbfdotted.dot(ones[lg])
 
 def g_theta(timeseq, reference_time, bandwidth, max_time):
 	''' g_theta for DHP
@@ -146,12 +151,10 @@ def g_theta(timeseq, reference_time, bandwidth, max_time):
 			5. bandwidth: 1-D np.array
 		@rtype: np.array, shape(3,)
 	'''
-	timeseq = timeseq.reshape(-1, 1)
 	timeseq = np.array(timeseq)
 	results = 0.5 * ( erfc( (- reference_time) / (2 * bandwidth ** 2) ** 0.5) - erfc( (max_time - timeseq - reference_time) / (2 * bandwidth ** 2) **0.5) )
 
-	#return np.sum(results, axis = 0)
-	return np.ones((len(results))).dot(results)
+	return results
 
 def update_cluster_likelihoods(timeseq, cluster, reference_time, bandwidth, base_intensity, max_time):
 	alphas = cluster.alphas
@@ -161,7 +164,7 @@ def update_cluster_likelihoods(timeseq, cluster, reference_time, bandwidth, base
 
 	time_intervals = timeseq[-1] - timeseq[:-1]
 	#time_intervals = time_intervals[time_intervals>0]
-	alphas_res = copy(alphas.reshape(-1, 1, alphas.shape[-1]))
+	alphas_res = alphas.reshape(-1, 1, alphas.shape[-1])
 
 	#cluster.triggers += triggering_kernel(alphas_res, reference_time, time_intervals, bandwidth)
 	cluster.triggers = triggering_kernel(alphas_res, reference_time, time_intervals, bandwidth)
@@ -171,7 +174,7 @@ def update_cluster_likelihoods(timeseq, cluster, reference_time, bandwidth, base
 	cluster.likelihood_samples_sansLambda += np.log(cluster.triggers+1e-100)
 	cluster.likelihood_samples = -Lambda_0 - cluster.integ_triggers + cluster.likelihood_samples_sansLambda
 
-	return copy(cluster)
+	return cluster
 
 def update_triggering_kernel_optim(cluster):
 	''' procedure of triggering kernel for SMC
@@ -189,12 +192,14 @@ def update_triggering_kernel_optim(cluster):
 	log_priors = cluster.log_priors
 	logLikelihood = cluster.likelihood_samples
 	log_update_weight = log_priors + logLikelihood
-	log_update_weight = log_update_weight - np.max(log_update_weight)
+	#log_update_weight = log_update_weight - np.max(log_update_weight)  # Prevents overflow
 	update_weight = np.exp(log_update_weight)
 
 	#update_weight[update_weight<np.mean(update_weight)]=0.  # Removes noise of obviously unfit alpha samples
 
-	sumUpdateWeight = update_weight.dot(np.ones((len(update_weight))))
+	lg = len(update_weight)
+	if lg not in ones: ones[lg] = np.ones((lg))
+	sumUpdateWeight = update_weight.dot(ones[lg])
 	#sumUpdateWeight = np.sum(update_weight)
 	update_weight = update_weight / sumUpdateWeight
 
@@ -222,7 +227,7 @@ def log_dirichlet_multinomial_distribution(cls_word_distribution, doc_word_distr
 	#arrones = np.ones((len(priors)))
 	#priors_sum = np.sum(priors)
 	#priors_sum = priors.dot(arrones)
-	priors_sum = priors[0]*len(priors)  # ATTENTION SI PRIOR[0] SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
+	priors_sum = priors[0]*len(priors)  # ATTENTION PRIOR[0] SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
 	log_prob = 0
 	log_prob += gammaln(cls_word_count - doc_word_count + priors_sum)
 	log_prob -= gammaln(cls_word_count + priors_sum)
@@ -234,11 +239,15 @@ def log_dirichlet_multinomial_distribution(cls_word_distribution, doc_word_distr
 	#log_prob -= gammaln(cls_word_distribution - doc_word_distribution + priors).dot(arrones)
 
 	cnt = np.bincount(cls_word_distribution)
-	un = np.arange(len(cnt))
+	un = cnt.nonzero()[0]
+	cnt = cnt[un]
+
 	log_prob += gammaln(un + priors[0]).dot(cnt)  # ATTENTION SI PRIOR[0] SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
 
 	cnt = np.bincount(cls_word_distribution-doc_word_distribution)
-	un = np.arange(len(cnt))
+	un = cnt.nonzero()[0]
+	cnt = cnt[un]
+
 	log_prob -= gammaln(un + priors[0]).dot(cnt)
 
 	return log_prob

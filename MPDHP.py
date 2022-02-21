@@ -5,6 +5,8 @@ import time
 from copy import deepcopy as copy
 from utils import *
 
+np.random.seed(1564)
+
 class Dirichlet_Hawkes_Process(object):
 	"""docstring for Dirichlet Hawkes Prcess"""
 	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r):
@@ -93,11 +95,12 @@ class Dirichlet_Hawkes_Process(object):
 			cluster_selection_probs = active_cluster_logrates + active_cluster_textual_probs # in log scale
 			cluster_selection_probs = cluster_selection_probs - np.max(cluster_selection_probs) # prevent overflow
 			cluster_selection_probs = np.exp(cluster_selection_probs)
-			cluster_selection_probs = cluster_selection_probs / np.sum(cluster_selection_probs)
+			cluster_selection_probs = cluster_selection_probs / np.ones((len(cluster_selection_probs))).dot(cluster_selection_probs)  # Normalize
 
-			# Random cluster selection
-			selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
-			selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
+			# # Random cluster selection
+			# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
+			# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
+			selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
 
 			# New cluster drawn
 			if selected_cluster_index == 0:
@@ -137,9 +140,10 @@ class Dirichlet_Hawkes_Process(object):
 		tu = self.active_interval[0]
 		keys = list(particle.active_clusters.keys())
 		for cluster_index in keys:
-			timeseq = particle.active_clusters[cluster_index]
-			active_timeseq = [t for t in timeseq if t > tu]
-			if not active_timeseq:
+			timeseq = np.array(particle.active_clusters[cluster_index])
+			# active_timeseq = [t for t in timeseq if t > tu]
+			active_timeseq = timeseq[timeseq>tu]
+			if active_timeseq.size==0:
 				del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
 				del particle.clusters[cluster_index].alphas
 				del particle.clusters[cluster_index].log_priors
@@ -147,7 +151,7 @@ class Dirichlet_Hawkes_Process(object):
 				del particle.clusters[cluster_index].triggers
 				del particle.clusters[cluster_index].integ_triggers
 			else:
-				particle.active_clusters[cluster_index] = active_timeseq
+				particle.active_clusters[cluster_index] = list(active_timeseq)
 		return particle.active_clusters
 	
 	def calculate_particle_log_update_prob(self, particle, selected_cluster_index, doc):
@@ -263,11 +267,7 @@ def getArgs(args):
 			if i==2:
 				tabSigs.append(float(line.replace("\n", "")))
 
-	curdir = os.curdir+"/"
-	for folder in outputFolder.split("/"):
-		if folder not in os.listdir(curdir) and folder != "":
-			os.mkdir(curdir+folder+"/")
-		curdir += folder+"/"
+	ensureFolder(outputFolder)
 
 	if len(tabMeans)!=len(tabSigs):
 		sys.exit("The means and standard deviation do not match. Please check the parameters file.\n"
@@ -280,6 +280,13 @@ def getArgs(args):
 		rarr.append(float(rstr))
 	return dataFile, outputFolder, means, sigs, lamb0, rarr, nbRuns, theta0, alpha0, sample_num, particle_num, printRes
 
+def ensureFolder(folder):
+	curfol = "./"
+	for fol in folder.split("/")[:-1]:
+		if fol not in os.listdir(curfol) and fol!="":
+			os.mkdir(curfol+fol)
+		curfol += fol+"/"
+
 def parse_newsitem_2_doc(news_item, vocabulary_size):
 	index = news_item[0]
 	timestamp = news_item[1]
@@ -291,7 +298,8 @@ def parse_newsitem_2_doc(news_item, vocabulary_size):
 	doc = Document(index, timestamp, word_distribution, word_count)
 	return doc
 
-def readObservations(dataFile, outputFolder):
+def readObservations(folder, name, outputFolder):
+	dataFile = folder+name+"_events.txt"
 	observations = []
 	wdToIndex, index = {}, 0
 	with open(dataFile, "r", encoding="utf-8") as f:
@@ -299,6 +307,12 @@ def readObservations(dataFile, outputFolder):
 			l = line.replace("\n", "").split("\t")
 			timestamp = float(l[0])
 			words = l[1].split(",")
+			try:
+				clusTxt = l[2]
+				clusTmp = l[3]
+			except:
+				clusTxt = None
+				clusTmp = None
 			uniquewords, cntwords = np.unique(words, return_counts=True)
 			for un in uniquewords:
 				if un not in wdToIndex:
@@ -307,9 +321,10 @@ def readObservations(dataFile, outputFolder):
 			uniquewords = [wdToIndex[un] for un in uniquewords]
 			uniquewords, cntwords = np.array(uniquewords, dtype=int), np.array(cntwords, dtype=int)
 
-			tup = (i, timestamp, (uniquewords, cntwords))
+
+			tup = (i, timestamp, (uniquewords, cntwords), (clusTxt, clusTmp))
 			observations.append(tup)
-	with open(outputFolder+"indexWords.txt", "w+", encoding="utf-8") as f:
+	with open(outputFolder+name+"_indexWords.txt", "w+", encoding="utf-8") as f:
 		for wd in wdToIndex:
 			f.write(f"{wdToIndex[wd]}\t{wd}\n")
 	V = len(wdToIndex)
@@ -395,25 +410,35 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 	t = time.time()
 
-	lgObs = len(observations)
-	for i, news_item in enumerate(observations):
-		doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
-		DHP.sequential_monte_carlo(doc, threshold)
 
-		if i%100==1 and printRes:
-			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
-				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
-				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
+	import pprofile
+	profiler = pprofile.Profile()
+	with profiler:
 
-		if i%1000==1:
-			while True:
-				try:
-					writeParticles(DHP, folderOut, nameOut)
-					break
-				except Exception as e:
-					print(i, e)
-					time.sleep(10)
-					continue
+		lgObs = len(observations)
+		for i, news_item in enumerate(observations):
+			doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
+			DHP.sequential_monte_carlo(doc, threshold)
+
+			if (i%100==1 and printRes) or (i>0 and True):
+				print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
+					  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
+					  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
+
+			if i%1000==1:
+				while True:
+					try:
+						writeParticles(DHP, folderOut, nameOut)
+						break
+					except Exception as e:
+						print(i, e)
+						time.sleep(10)
+						continue
+
+	profiler.print_stats()
+	profiler.dump_stats("Benchmark.txt")
+	pause()
+
 
 	while True:
 		try:
@@ -426,17 +451,54 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 
 if __name__ == '__main__':
-	dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
+	try:
+		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
+	except:
+		nbClasses = 2
+		run_time = 500
+		XP = "Overlap"
 
-	observations, V = readObservations(dataFile, outputFolder)
+		overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
+		overlap_temp = None  # Overlap between the kernels of the simulating process
+
+		voc_per_class = 10000  # Number of words available for each cluster
+		perc_rand = 0.  # Percentage of events to which assign random textual cluster
+		words_per_obs = 1000
+
+		run = 0
+
+		lamb0 = 0.0005
+		means = np.array([3, 7, 11])
+		sigs = np.array([0.5, 0.5, 0.5])
+		folder = "data/Synth/"
+		nameData = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
+		dataFile = folder+nameData+"_events.txt"
+		outputFolder = folder.replace("data/", "output/")
+
+		ensureFolder(outputFolder)
+
+		arrR = [1.]
+		nbRuns = 1
+		theta0 = 0.01
+		alpha0 = 0.5
+		sample_num = 2000
+		particle_num = 8
+		printRes = True
+
+
+	observations, V = readObservations(folder, nameData, outputFolder)
 
 	t = time.time()
 	i = 0
 	nbRunsTot = nbRuns*len(arrR)
+
+
 	for run in range(nbRuns):
 		for r in arrR:
-			name = f"{dataFile[dataFile.rfind('/'):]}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
+			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
 			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V)
 			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/(i*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 			i += 1
+
+
 

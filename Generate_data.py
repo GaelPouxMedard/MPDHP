@@ -6,11 +6,20 @@ from tick.hawkes import (SimuHawkes, HawkesKernelTimeFunc, HawkesKernelExp, Hawk
 from tick.base import TimeFunction
 from tick.plot import plot_hawkes_kernels
 import sys
+import os
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['font.family'] = 'Calibri'
 
 seed = 1111
 np.random.seed(seed)
+
+
+def ensureFolder(folder):
+    curfol = "./"
+    for fol in folder.split("/"):
+        if fol not in os.listdir(curfol) and fol!="":
+            os.mkdir(curfol+fol)
+        curfol += fol+"/"
 
 def gaussian(x, mu, sig):
     return (np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))))/(2 * np.pi * np.power(sig, 2.)) ** 0.5
@@ -60,20 +69,25 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
 
     return events, hawkes
 
-def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs):
+def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0):
     # Generate text
     # Perfectly separated text content
+    theta0 = np.array([0.01]*voc_per_class)
     voc_clusters = [np.array(list(range(int(voc_per_class)))) + c*voc_per_class for c in range(nbClasses)]
+    probs = np.array([np.random.multinomial(10000, pvals=np.random.dirichlet(theta0)).squeeze() for c in range(nbClasses)])
+    probs = probs/np.sum(probs, axis=-1)[:, None]
 
-    # Overlap
-    for c in range(nbClasses):
-        voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
+
+    if overlap_voc is not None:
+        # Overlap
+        for c in range(nbClasses):
+            voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
 
     # Associate a fraction of vocabulary to each observation
     arrtxt = []
     for e in events:
         c_text = int(e[1])
-        arrtxt.append(np.random.choice(voc_clusters[c_text], size=words_per_obs))
+        arrtxt.append(np.random.choice(voc_clusters[c_text], size=words_per_obs, p=probs[c_text]))
 
     return arrtxt
 
@@ -124,12 +138,13 @@ def make_overlap_temp(events, alpha, overlap_temp, params_resimul):
     return events
 
 def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
-    events = np.insert(events, 3, np.array(list(range(len(events)))), axis=1)
-    events = np.array(list(sorted(events, key= lambda x: x[2])))
+    ensureFolder(folder)
+    events = np.insert(events, 3, np.array(list(range(len(events)))), axis=1)  # Index to identify textual content
+    events = np.array(list(sorted(events, key= lambda x: x[2])))  # Sort by time
     with open(folder+name+"_events.txt", "w+") as f:
         for i, e in enumerate(events):
             content = ",".join(map(str, list(arrtxt[int(e[3])])))
-            txt = str(e[0])+"\t"+str(e[1])+"\t"+str(e[2])+"\t"+content+"\n"
+            txt = str(e[2])+"\t"+content+str(e[0])+"\t"+str(e[1])+"\t"+"\n"
             f.write(txt)
 
     with open(folder+name+"_lamb0.txt", "w+") as f:
@@ -168,7 +183,7 @@ def plotProcess(events, means, sigs, alpha, whichclus=0):
 
 
 def generate(params):
-    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder = params
+    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder = params
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
         a = np.random.random((nbClasses, len(means)))**2
@@ -180,62 +195,64 @@ def generate(params):
     # Get timestamps and temporal clusters
     events, hawkes = simulHawkes(lamb0, alpha, means, sigs, run_time=run_time)
     print(len(events), "events")
-    dofit = True
+    dofit = False
     if dofit:
         em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
         em.fit(hawkes.timestamps)
         fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
         plt.show()
-        sys.exit()
+        #sys.exit()
 
-    # Get the wanted temporal overlap
-    if overlap_temp >=0 and nbClasses==2:
-        params_resimul=(lamb0, alpha, means, sigs, run_time)
-        events = make_overlap_temp(events, alpha, overlap_temp, params_resimul)
+    if overlap_temp is not None:
+        # Get the wanted temporal overlap
+        if overlap_temp >=0 and nbClasses==2:
+            params_resimul=(lamb0, alpha, means, sigs, run_time)
+            events = make_overlap_temp(events, alpha, overlap_temp, params_resimul)
 
     # Initialize textual clusters and shuffle nb_rand of them
-    events = np.insert(events, 0, events[:, 0], axis=1)
+    events = np.insert(events, 0, events[:, 0], axis=1)  # Set textual cluster as identical to temporal ones
     nb_rand = int(perc_rand*len(events))
-    events[np.random.randint(0, len(events), nb_rand), 1] = np.random.randint(0, nbClasses, nb_rand)
+    events[np.random.randint(0, len(events), nb_rand), 1] = np.random.randint(0, nbClasses, nb_rand)  # Shuffle clusters
 
     # Generate text associated with textual clusters
-    arrtxt = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs)
+    arrtxt = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
     # Plot the process (univariate only e.g. diagonal of alpha)
-    #print(len(events))
-    #plotProcess(events, means, sigs, alpha, whichclus=1)
-    #pause()
+    # print(len(events))
+    # plotProcess(events, means, sigs, alpha, whichclus=1)
+    # pause()
 
     name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
 nbClasses = 2
-run_time = 1500
+run_time = 500
 XP = "Overlap"
 
-overlap_voc = 0.  # Proportion of voc in common between a clusters and its direct neighbours
-overlap_temp = 0.  # Overlap between the kernels of the simulating process
+overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
+overlap_temp = None  # Overlap between the kernels of the simulating process
 
-voc_per_class = 1000  # Number of words available for each cluster
+voc_per_class = 10000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 100
+words_per_obs = 1000
 
 run = 0
 
 lamb0 = 0.05
+theta0 = np.array([0.01]*voc_per_class)
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])
 folder = "data/Synth/"
 np.random.seed(1564)
 #params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
-params = (2, 3000, voc_per_class, 0.3, 0.4, voc_per_class, perc_rand, words_per_obs, 0, lamb0, means, sigs, folder)
+params = (2, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, means, sigs, folder)
 generate(params)
 pause()
 nbRuns = 10
 if XP == "Decorr":
     for perc_rand in np.array(list(range(11)))/10:
         for run in range(nbRuns):
-            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
+            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder)
             print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
             generate(params)
 elif XP == "Overlap":
@@ -243,7 +260,7 @@ elif XP == "Overlap":
     for overlap_voc in [0., 0.3, 0.5, 0.7, 0.9]:
         for overlap_temp in [0., 0.3, 0.5, 0.7]:
             for run in range(nbRuns):
-                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
+                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder)
                 print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
                 generate(params)
 
