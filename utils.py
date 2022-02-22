@@ -26,8 +26,9 @@ class Cluster(object):
 		self.triggers = np.zeros((num_samples), dtype=np.float)
 		self.integ_triggers = np.ones((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
-		self.alphas = dirichlet(alpha0, num_samples=num_samples, active_clusters=active_clusters, size_kernel=size_kernel)
-		self.log_priors = log_dirichlet_PDF(self.alphas, alpha0)
+		vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True)
+		self.alphas = vectors
+		self.log_priors = priors
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -57,10 +58,39 @@ class Particle(object):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
 
+def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False):
+	vec = None
+	prior = None
+	if method=="dirichlet":
+		vec = dirichlet(alpha0, num_samples, active_clusters, size_kernel)
+	if method=="beta":
+		vec = beta(alpha0, num_samples, active_clusters, size_kernel)
+	vec[vec==0.] = 1e-10
+	vec[vec==1.] = 1-1e-10
+
+	if not return_priors:
+		return vec
+
+	else:
+		if method=="dirichlet":
+			prior = log_dirichlet_PDF(vec, alpha0)
+		if method=="beta":
+			prior = log_beta_prior(vec, alpha0)
+		return vec, prior
+
 def dirichlet(prior, num_samples, active_clusters, size_kernel):
 	''' Draw 1-D samples from a dirichlet distribution
 	'''
 	draws = np.random.dirichlet([prior]*(size_kernel), size=(num_samples, len(active_clusters)))
+	if num_samples==1:
+		draws=draws[0]
+	return draws
+
+def beta(alpha0, num_samples, active_clusters, size_kernel):
+	''' Draw 1-D samples from a dirichlet distribution
+	'''
+	skew = 10
+	draws = np.random.beta(alpha0, skew*alpha0, size=(num_samples, len(active_clusters), size_kernel))
 	if num_samples==1:
 		draws=draws[0]
 	return draws
@@ -95,6 +125,23 @@ def log_dirichlet_PDF(alpha, alpha0):
 	lg = alpha.shape[-1]
 	if lg not in ones: ones[lg] = np.ones((lg))
 	priors = (np.log(alpha)*(alpha0-1)).dot(ones[lg]) + gammaln(alpha0*lg) - gammaln(alpha0)*lg
+
+	lg = priors.shape[-1]
+	if lg not in ones: ones[lg] = np.ones((lg))
+	priors = priors.dot(ones[lg])
+
+	return priors
+
+def log_beta_prior(alpha, alpha0):
+	''' return the logpdf for each entry of a list of dirichlet draws
+	'''
+
+	skew = 10
+	priors = np.log(alpha)*(alpha0-1) + np.log(1-alpha)*(skew*alpha0-1) + gammaln(alpha0+skew*alpha0) - gammaln(alpha0) - gammaln(skew*alpha0)
+
+	lg = priors.shape[-1]
+	if lg not in ones: ones[lg] = np.ones((lg))
+	priors = priors.dot(ones[lg])
 
 	lg = priors.shape[-1]
 	if lg not in ones: ones[lg] = np.ones((lg))
@@ -186,9 +233,6 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 
 	alphas_times_gtheta = np.sum(alphas * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
 
-	lg=alphas_times_gtheta.shape[-1]
-	if lg not in ones: ones[lg]=np.ones((lg))
-	alphas_times_gtheta = alphas_times_gtheta.dot(ones[lg])  # num_sample
 
 	time_intervals = timeseq[-1] - timeseq[:-1]
 

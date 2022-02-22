@@ -143,14 +143,14 @@ class Dirichlet_Hawkes_Process(object):
 		for cluster_index in particle.active_clusters:
 			if particle.clusters[cluster_index].alphas.shape[:2] == (self.sample_num, len(particle.active_clusters)):
 				continue
-			newDir = np.random.dirichlet([self.alpha0] * len(self.reference_time), size=self.sample_num)
-			additionPriors = log_dirichlet_PDF(newDir[:, None, :], alpha0)
-			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + additionPriors
-			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newDir[:, None, :]))
+			newVec, newPriors = draw_vectors(alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
+			newVec = newVec.squeeze()
+			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
+			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newVec[:, None, :]))
 			if particle.clusters[cluster_index].alpha is not None:
-				particle.clusters[cluster_index].alpha = np.vstack((particle.clusters[cluster_index].alpha, np.mean(newDir[:, None, :], axis=0)))
+				particle.clusters[cluster_index].alpha = np.vstack((particle.clusters[cluster_index].alpha, np.mean(newVec[:, None, :], axis=0)))
 			else:
-				particle.clusters[cluster_index].alpha = np.array(np.mean(newDir[:, None, :], axis=0))
+				particle.clusters[cluster_index].alpha = np.array(np.mean(newVec[:, None, :], axis=0))
 		return particle.clusters
 
 	def parameter_estimation(self, particle, selected_cluster_index):
@@ -159,7 +159,7 @@ class Dirichlet_Hawkes_Process(object):
 		# Observation is alone in the cluster => the cluster is new => random initialization of alpha
 		# Note that it cannot be a previously filled cluster since it would have 0 chance to get selected (see sampling_cluster_label)
 		if len(timeseq)==1:
-			alpha = dirichlet(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
+			alpha = draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
 			return alpha
 
 		T = self.active_interval[1]
@@ -414,7 +414,7 @@ def writeParticles(DHP, folderOut, nameOut):
 						f.write("]")
 				f.write("\n")
 
-def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None):
+def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, alpha_true=None):
 	"""
 	observations = ([array int] index_obs, [array float] timestamp, ([array int] unique_words, [array int] count_words), [opt, int] temporal_cluster, [opt, int] textual_cluster)
 	folderOut = Output folder for the results
@@ -460,7 +460,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
 		DHP.sequential_monte_carlo(doc, threshold)
 
-		trueClus.append(news_item[-1][0])
+		trueClus.append(int(float(news_item[-1][0])))
 
 		if (i%100==1 and printRes) or (i>0 and False):
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
@@ -468,7 +468,29 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
 			inferredClus = DHP.particles[0].docs2cluster_ID
-			print(NMI(trueClus, inferredClus))
+			print("NMI", NMI(trueClus, inferredClus))
+
+			if alpha_true is not None:
+				trueClus = np.array(trueClus)
+				inferredClus = np.array(inferredClus)
+				infToTrue = {}
+				numObs = {}
+				for c in set(inferredClus):
+					ctrue, cnt = np.unique(trueClus[inferredClus==c], return_counts=True)
+					ctrue = ctrue[cnt==max(cnt)][0]
+					infToTrue[c] = ctrue
+					numObs[c] = len(inferredClus[inferredClus==c])
+				trueClus = list(trueClus)
+				inferredClus = list(inferredClus)
+
+				exponent = 1
+				err, div = 0., 0.
+				for c in infToTrue:
+					for c2 in DHP.particles[0].clusters[c].alpha_final:
+						err += numObs[c]*np.sum(np.abs(DHP.particles[0].clusters[c].alpha_final[c2] - alpha_true[infToTrue[c], infToTrue[c2]])**exponent)
+						print(DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
+						div += numObs[c]*len(reference_time)
+				print("ERR", (err/(div+1e-20))**(1./exponent))
 
 		if i%1000==1:
 			while True:
@@ -496,7 +518,7 @@ if __name__ == '__main__':
 	try:
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
-		nbClasses = 2
+		nbClasses = 3
 		run_time = 1000
 		XP = "Overlap"
 
@@ -505,25 +527,27 @@ if __name__ == '__main__':
 
 		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
-		words_per_obs = 2
+		words_per_obs = 100
 
 		run = 0
 
-		lamb0 = 0.1
-		theta0 = 0.01
+		lamb0 = 0.1  # Cannot be inferred
+		theta0 = 0.01  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
+		alpha0 = 1.  # Uniform beta or Dirichlet prior
 		means = np.array([3, 7, 11])
 		sigs = np.array([0.5, 0.5, 0.5])
+
 		folder = "data/Synth/"
 		nameData = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
 		dataFile = folder+nameData+"_events.txt"
 		outputFolder = folder.replace("data/", "output/")
+		alpha_true = np.load(folder+nameData+"_alpha.npy")
 
 		ensureFolder(outputFolder)
 
-		arrR = [2.]
+		arrR = [0.]
 		nbRuns = 1
-		alpha0 = 0.1
-		sample_num = 20
+		sample_num = 2000
 		particle_num = 8
 		printRes = True
 
@@ -538,7 +562,7 @@ if __name__ == '__main__':
 	for run in range(nbRuns):
 		for r in arrR:
 			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
-			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V)
+			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
 			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 			i += 1
 

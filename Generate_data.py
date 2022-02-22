@@ -50,7 +50,7 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
 
     baseline = np.array([lamb0 for _ in range(nbClasses)])
 
-    hawkes = SimuHawkes(baseline=baseline, end_time=run_time, verbose=False, seed=int(np.random.random()*10000))
+    hawkes = SimuHawkes(force_simulation=False, baseline=baseline, end_time=run_time, verbose=False, seed=int(np.random.random()*10000))
 
     for c in range(nbClasses):
         for c2 in range(nbClasses):
@@ -186,9 +186,13 @@ def generate(params):
     nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder = params
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
-        a = np.random.dirichlet(alpha0, size=nbClasses)
-        alpha[c]=a/np.sum(a)
+        a = np.random.dirichlet([alpha0[0]]*nbClasses*len(means))
+        a = a.reshape((nbClasses, len(means)))
+        alpha[c]=a
     alpha = np.array(alpha)
+
+    skew = 1
+    alpha = np.random.beta(alpha0, skew*alpha0, size=(nbClasses, nbClasses, len(means)))
 
     print(alpha)
 
@@ -225,7 +229,7 @@ def generate(params):
     name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
-nbClasses = 2
+nbClasses = 3
 run_time = 1000
 XP = "Overlap"
 
@@ -234,7 +238,7 @@ overlap_temp = None  # Overlap between the kernels of the simulating process
 
 voc_per_class = 1000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 2
+words_per_obs = 100
 
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])
@@ -242,12 +246,12 @@ sigs = np.array([0.5, 0.5, 0.5])
 
 lamb0 = 0.1
 theta0 = np.array([0.01]*voc_per_class)
-alpha0 = np.array([0.5]*len(means))
+alpha0 = np.array([0.05]*len(means))
 
 folder = "data/Synth/"
 np.random.seed(1564)
 #params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
-params = (2, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, alpha0, means, sigs, folder)
+params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, alpha0, means, sigs, folder)
 generate(params)
 pause()
 nbRuns = 10
