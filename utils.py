@@ -14,7 +14,7 @@ class Document(object):
 		self.word_count = np.array(word_count, dtype=int)
 		
 class Cluster(object):
-	def __init__(self, index, num_samples, alpha0):# alpha, word_distribution, documents, word_count):
+	def __init__(self, index, num_samples, active_clusters, alpha0, size_kernel):# alpha, word_distribution, documents, word_count):
 		super(Cluster, self).__init__()
 		self.index = index
 		self.alpha = None
@@ -25,8 +25,8 @@ class Cluster(object):
 		self.triggers = np.zeros((num_samples), dtype=np.float)
 		self.integ_triggers = np.ones((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
-		self.alphas = dirichlet(alpha0, num_samples)
-		self.log_priors = log_dirichlet_PDF(self.alphas, alpha0, num_samples)
+		self.alphas = dirichlet(alpha0, num_samples=num_samples, active_clusters=active_clusters, size_kernel=size_kernel)
+		self.log_priors = log_dirichlet_PDF(self.alphas, alpha0)
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -48,16 +48,17 @@ class Particle(object):
 		self.clusters = {} # can be store in the process for efficient memory implementation, key = cluster_index, value = cluster object
 		self.docs2cluster_ID = [] # the element is the cluster index of a sequence of document ordered by the index of document
 		self.active_clusters = {} # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
+		self.active_timestamps = None
 		self.cluster_num_by_now = 0
 
 	def __repr__(self):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
 
-def dirichlet(prior, num_samples=1):
+def dirichlet(prior, num_samples, active_clusters, size_kernel):
 	''' Draw 1-D samples from a dirichlet distribution
 	'''
-	draws = np.random.dirichlet(prior, num_samples)
+	draws = np.random.dirichlet([prior]*(size_kernel), size=(num_samples, len(active_clusters)))
 	if num_samples==1:
 		draws=draws[0]
 	return draws
@@ -85,12 +86,19 @@ def EfficientImplementation(tn, reference_time, bandwidth, epsilon = 1e-5):
 	tu = tn - ( max_ref_time + np.sqrt( -2 * max_bandwidth * np.log(0.5 * epsilon * np.sqrt(2 * np.pi * max_bandwidth**2)) ))
 	return tu
 
-def log_dirichlet_PDF(alpha, alpha0, num_samples):
+def log_dirichlet_PDF(alpha, alpha0):
 	''' return the logpdf for each entry of a list of dirichlet draws
 	'''
-	lg = len(alpha[0])
+
+	lg = alpha.shape[-1]
 	if lg not in ones: ones[lg] = np.ones((lg))
-	return (np.log(alpha)*(alpha0[None, :]-1)).dot(ones[lg]) + gammaln(alpha0.dot(ones[lg])) - gammaln(alpha0).dot(ones[lg])
+	priors = (np.log(alpha)*(alpha0-1)).dot(ones[lg]) + gammaln(alpha0*lg) - gammaln(alpha0)*lg
+
+	lg = priors.shape[-1]
+	if lg not in ones: ones[lg] = np.ones((lg))
+	priors = priors.dot(ones[lg])
+
+	return priors
 
 def RBF_kernel(reference_time, time_interval, bandwidth):
 	''' RBF kernel for Hawkes process.
@@ -100,11 +108,11 @@ def RBF_kernel(reference_time, time_interval, bandwidth):
 			3. bandwidth: np.array, entries larger than 0.
 		@rtype: np.array
 	'''
-	numerator = - (time_interval - reference_time) ** 2 / (2 * bandwidth ** 2) 
-	denominator = (2 * np.pi * bandwidth ** 2 ) ** 0.5
+	numerator = - (time_interval[:, None] - reference_time[None, :]) ** 2 / (2 * bandwidth[None, :] ** 2)
+	denominator = (2 * np.pi * bandwidth[None, :] ** 2 ) ** 0.5
 	return np.exp(numerator) / denominator
 
-def triggering_kernel(alpha, reference_time, time_intervals, bandwidth, donotsum=False):
+def triggering_kernel(alpha, reference_time, time_intervals, bandwidth):
 	''' triggering kernel for Hawkes porcess.
 		@param:
 			1. alpha: np.array, entres larger than 0
@@ -115,14 +123,11 @@ def triggering_kernel(alpha, reference_time, time_intervals, bandwidth, donotsum
 	'''
 	#if len(alpha) != len(reference_time):
 		#raise Exception("length of alpha and length of reference time must equal")
-	time_intervals = time_intervals.reshape(-1, 1)
+	#time_intervals = time_intervals.reshape(-1, 1)
 
 	if len(alpha.shape) == 3:
-		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)
-		if donotsum:
-			return alpha.dot(RBF.T)
-		#return np.sum(np.sum(alpha * RBF_kernel(reference_time, time_intervals, bandwidth), axis = 1), axis = 1)
-		#return alpha.dot(np.ones((RBF.shape[0])).dot(RBF)).dot(np.ones((1)))
+		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)  # num_time_points, size_kernel
+
 		lg = RBF.shape[0]
 		if lg not in ones: ones[lg] = np.ones((lg))
 		rbfdotted = alpha.dot(ones[lg].dot(RBF))
@@ -130,17 +135,24 @@ def triggering_kernel(alpha, reference_time, time_intervals, bandwidth, donotsum
 		return rbfdotted[0]
 
 	else:
-		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)
-		#return np.sum(np.sum(alpha * RBF_kernel(reference_time, time_intervals, bandwidth), axis = 0), axis = 0)
-		if donotsum:
-			return RBF.dot(alpha)
+		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)  # num_time_points, size_kernel
 
-		rbfdotted = RBF.dot(alpha)
+		rbfdotted = RBF.dot(alpha.T)  # num_time_points, num_active_clusters
+		lg = len(rbfdotted)
+		if lg==1:
+			rbfdotted = rbfdotted[0]
+		else:
+			if lg not in ones: ones[lg] = np.ones((lg))
+			rbfdotted = ones[lg].dot(rbfdotted)
+
 		lg = len(rbfdotted)
 		if lg==1:
 			return rbfdotted[0]
 		if lg not in ones: ones[lg] = np.ones((lg))
-		return rbfdotted.dot(ones[lg])
+
+		rbfdotted = ones[lg].dot(rbfdotted)
+
+		return rbfdotted
 
 def g_theta(timeseq, reference_time, bandwidth, max_time):
 	''' g_theta for DHP
@@ -152,26 +164,42 @@ def g_theta(timeseq, reference_time, bandwidth, max_time):
 		@rtype: np.array, shape(3,)
 	'''
 	timeseq = np.array(timeseq)
-	results = 0.5 * ( erfc( (- reference_time) / (2 * bandwidth ** 2) ** 0.5) - erfc( (max_time - timeseq - reference_time) / (2 * bandwidth ** 2) **0.5) )
+	results = 0.5 * ( erfc( (- reference_time[None, :]) / (2 * bandwidth[None, :] ** 2) ** 0.5) - erfc( (max_time - timeseq[:, None] - reference_time[None, :]) / (2 * bandwidth[None, :] ** 2) **0.5) )
 
 	return results
 
-def update_cluster_likelihoods(timeseq, cluster, reference_time, bandwidth, base_intensity, max_time):
+def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandwidth, base_intensity, max_time):
+	timeseq = active_timestamps[:, 1]
+	clusseq = active_timestamps[:, 0]
+	num_active_clus = len(set(clusseq))
+
 	alphas = cluster.alphas
 	Lambda_0 = base_intensity * max_time
-	#alphas_times_gtheta = np.sum(alphas * g_theta(timeseq, reference_time, bandwidth, max_time), axis = 1) # shape = (sample number,)
-	alphas_times_gtheta = alphas.dot(g_theta(np.array([timeseq[-1]]), reference_time, bandwidth, max_time))
+	integ_RBF = g_theta(np.array([timeseq[-1]]), reference_time, bandwidth, max_time)
+	unweighted_integ_triggering_kernel = np.zeros((num_active_clus, len(reference_time)))
+	indToClus = {int(c): i for i,c in enumerate(sorted(list(set(clusseq))))}
+	for (clus, integ_trig) in zip(clusseq, integ_RBF):
+		indclus = indToClus[int(clus)]
+		unweighted_integ_triggering_kernel[indclus] = unweighted_integ_triggering_kernel[indclus] + integ_trig
+
+	alphas_times_gtheta = np.sum(alphas * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
+
+	lg=alphas_times_gtheta.shape[-1]
+	if lg not in ones: ones[lg]=np.ones((lg))
+	alphas_times_gtheta = alphas_times_gtheta.dot(ones[lg])  # num_sample
 
 	time_intervals = timeseq[-1] - timeseq[:-1]
-	#time_intervals = time_intervals[time_intervals>0]
-	alphas_res = alphas.reshape(-1, 1, alphas.shape[-1])
 
-	#cluster.triggers += triggering_kernel(alphas_res, reference_time, time_intervals, bandwidth)
-	cluster.triggers = triggering_kernel(alphas_res, reference_time, time_intervals, bandwidth)
+	RBF = RBF_kernel(reference_time, time_intervals, bandwidth)  # num_time_points, size_kernel
+	unweighted_triggering_kernel = np.zeros((num_active_clus, len(reference_time)))
+	indToClus = {int(c): i for i,c in enumerate(sorted(list(set(clusseq))))}
+	for (clus, trig) in zip(clusseq, RBF):
+		indclus = indToClus[int(clus)]
+		unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
+	cluster.triggers = np.sum(alphas*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
 
-	cluster.integ_triggers += alphas_times_gtheta
-	#cluster.likelihood_samples += -Lambda_0 - cluster.integ_triggers + np.log(cluster.triggers+1e-100)
-	cluster.likelihood_samples_sansLambda += np.log(cluster.triggers+1e-100)
+	cluster.integ_triggers = cluster.integ_triggers + alphas_times_gtheta
+	cluster.likelihood_samples_sansLambda = cluster.likelihood_samples_sansLambda + np.log(cluster.triggers+1e-100)
 	cluster.likelihood_samples = -Lambda_0 - cluster.integ_triggers + cluster.likelihood_samples_sansLambda
 
 	return cluster
@@ -200,15 +228,15 @@ def update_triggering_kernel_optim(cluster):
 	lg = len(update_weight)
 	if lg not in ones: ones[lg] = np.ones((lg))
 	sumUpdateWeight = update_weight.dot(ones[lg])
-	#sumUpdateWeight = np.sum(update_weight)
 	update_weight = update_weight / sumUpdateWeight
 
 	#update_weight = update_weight.reshape(-1,1)
 	#alpha = np.sum(update_weight * alphas, axis = 0)
-	alpha = update_weight.dot(alphas)
+	alpha = np.tensordot(update_weight, alphas, axes=1)
 	#print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
 	#print(np.max(update_weight), np.min(update_weight), np.mean(update_weight), update_weight)
 	#print(len(update_weight[update_weight>0]), alpha)
+
 
 	return alpha
 
