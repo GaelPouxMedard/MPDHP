@@ -73,21 +73,21 @@ class Dirichlet_Hawkes_Process(object):
 			 doc.word_count, doc.word_count, self.vocabulary_size, self.theta0)
 			active_cluster_textual_probs = [cls0_log_dirichlet_multinomial_distribution]
 			# Update list of relevant timestamps
-			particle.active_clusters = self.update_active_clusters(particle)
+			particle = self.update_active_clusters(particle)
 
 			# Posterior probability for each cluster
 			timeseq = doc.timestamp - particle.active_timestamps[:, 1]
 			RBF = RBF_kernel(self.reference_time, timeseq, self.bandwidth)  # num_time_points, size_kernel
 			unweighted_triggering_kernel = np.zeros((len(particle.active_clusters), len(self.reference_time)))
-			indToClus = {int(c): i for i,c in enumerate(sorted(list(set(particle.active_timestamps[:, 0]))))}
+			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(list(set(particle.active_timestamps[:, 0]))))}
 			for (clus, trig) in zip(particle.active_timestamps[:, 0], RBF):
-				indclus = indToClus[int(clus)]
+				indclus = particle.active_clus_to_ind[int(clus)]
 				unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
 			for active_cluster_index in particle.active_clusters:
 				active_cluster_indexes.append(active_cluster_index)
 				alpha = particle.clusters[active_cluster_index].alpha
-				print("==", active_cluster_index, unweighted_triggering_kernel.shape, alpha.shape)
+				#print("==", active_cluster_index, unweighted_triggering_kernel.shape, alpha.shape)
 				rate = np.sum(alpha*unweighted_triggering_kernel)
 				#rate = triggering_kernel(alpha, self.reference_time, time_intervals, self.bandwidth)
 
@@ -114,7 +114,6 @@ class Dirichlet_Hawkes_Process(object):
 			# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
 			# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
 			selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
-			print("Selected", selected_cluster_index)
 
 			# New cluster drawn
 			if selected_cluster_index == 0:
@@ -166,26 +165,38 @@ class Dirichlet_Hawkes_Process(object):
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
 		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index])
+		for clus in particle.active_clusters:
+			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
 		return alpha
 
 	def update_active_clusters(self, particle):
 		tu = self.active_interval[0]
 		keys = list(particle.active_clusters.keys())
 		particle.active_timestamps = particle.active_timestamps[particle.active_timestamps[:, 1]>tu]
+		toRem = []
 		for cluster_index in keys:
 			timeseq = np.array(particle.active_clusters[cluster_index])
 			# active_timeseq = [t for t in timeseq if t > tu]
 			active_timeseq = timeseq[timeseq>tu]
 			if active_timeseq.size==0:
-				del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
-				del particle.clusters[cluster_index].alphas
-				del particle.clusters[cluster_index].log_priors
-				del particle.clusters[cluster_index].likelihood_samples
-				del particle.clusters[cluster_index].triggers
-				del particle.clusters[cluster_index].integ_triggers
+				toRem.append(cluster_index)
 			else:
 				particle.active_clusters[cluster_index] = list(active_timeseq)
-		return particle.active_clusters
+
+		for cluster_index in sorted(toRem, reverse=True):
+			del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
+			del particle.clusters[cluster_index].alphas
+			del particle.clusters[cluster_index].log_priors
+			del particle.clusters[cluster_index].likelihood_samples
+			del particle.clusters[cluster_index].triggers
+			del particle.clusters[cluster_index].integ_triggers
+
+			for cluster_index_left in keys:
+				if cluster_index_left not in toRem:
+					particle.clusters[cluster_index_left].alphas = np.delete(particle.clusters[cluster_index_left].alphas, particle.active_clus_to_ind[cluster_index], axis=1)
+					particle.clusters[cluster_index_left].alpha = np.delete(particle.clusters[cluster_index_left].alpha, particle.active_clus_to_ind[cluster_index], axis=0)
+
+		return particle
 	
 	def calculate_particle_log_update_prob(self, particle, selected_cluster_index, doc):
 		cls_word_distribution = particle.clusters[selected_cluster_index].word_distribution
@@ -451,7 +462,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 		trueClus.append(news_item[-1][0])
 
-		if (i%100==1 and printRes) or (i>0 and True):
+		if (i%100==1 and printRes) or (i>0 and False):
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
@@ -494,7 +505,7 @@ if __name__ == '__main__':
 
 		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
-		words_per_obs = 5
+		words_per_obs = 2
 
 		run = 0
 
@@ -509,11 +520,11 @@ if __name__ == '__main__':
 
 		ensureFolder(outputFolder)
 
-		arrR = [1.]
+		arrR = [2.]
 		nbRuns = 1
-		alpha0 = 0.5
-		sample_num = 2000
-		particle_num = 1
+		alpha0 = 0.1
+		sample_num = 20
+		particle_num = 8
 		printRes = True
 
 

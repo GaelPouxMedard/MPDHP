@@ -234,7 +234,7 @@ overlap_temp = None  # Overlap between the kernels of the simulating process
 
 voc_per_class = 1000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 5
+words_per_obs = 2
 
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])

@@ -18,6 +18,7 @@ class Cluster(object):
 		super(Cluster, self).__init__()
 		self.index = index
 		self.alpha = None
+		self.alpha_final = {}
 		self.word_distribution = None
 		self.word_count = 0
 		self.likelihood_samples = np.zeros((num_samples), dtype=np.float)
@@ -50,6 +51,7 @@ class Particle(object):
 		self.active_clusters = {} # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
 		self.active_timestamps = None
 		self.cluster_num_by_now = 0
+		self.active_clus_to_ind = None
 
 	def __repr__(self):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
