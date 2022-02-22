@@ -284,8 +284,6 @@ def update_triggering_kernel_optim(cluster, alpha_true=None):
 	print(np.max(update_weight), np.min(update_weight), np.mean(update_weight))#, update_weight)
 	print(alpha_true)
 	print(alphas[np.where(logLikelihood==np.max(logLikelihood))[0]])#, alpha)
-
-
 	print()
 
 

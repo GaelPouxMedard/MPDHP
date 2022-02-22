@@ -550,7 +550,7 @@ if __name__ == '__main__':
 
 		arrR = [0.]
 		nbRuns = 1
-		sample_num = 200
+		sample_num = 20000
 		particle_num = 8
 		printRes = True
 
