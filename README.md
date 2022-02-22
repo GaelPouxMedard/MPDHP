@@ -1,4 +1,4 @@
-# PDHP
+# MPDHP
 The script MPDHP.py is an implementation of the Powered Dirichlet-Hawkes process prior coupled to a simple Dirichlet-Multinomial language model, that can be ran from console.
 
 ## Usage

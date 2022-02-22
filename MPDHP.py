@@ -4,6 +4,7 @@ import numpy as np
 import time
 from copy import deepcopy as copy
 from utils import *
+from sklearn.metrics import normalized_mutual_info_score as NMI
 
 np.random.seed(1564)
 
@@ -29,7 +30,7 @@ class Dirichlet_Hawkes_Process(object):
 
 	def sequential_monte_carlo(self, doc, threshold):
 		# Set relevant time interval
-		tu = EfficientImplementation(doc.timestamp, self.reference_time, self.bandwidth)
+		tu = EfficientImplementation(doc.timestamp, self.reference_time, self.bandwidth, epsilon=1e-10)
 		T = doc.timestamp + self.horizon  # So that Gaussian RBF kernel is fully computed; needed to correctly compute the integral part of the likelihood
 		self.active_interval = [tu, T]
 
@@ -97,6 +98,7 @@ class Dirichlet_Hawkes_Process(object):
 			cluster_selection_probs = np.exp(cluster_selection_probs)
 			cluster_selection_probs = cluster_selection_probs / np.ones((len(cluster_selection_probs))).dot(cluster_selection_probs)  # Normalize
 
+			# print(cluster_selection_probs, active_cluster_indexes)
 			# # Random cluster selection
 			# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
 			# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
@@ -411,33 +413,32 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 	t = time.time()
 
 
-	import pprofile
-	profiler = pprofile.Profile()
-	with profiler:
+	lgObs = len(observations)
+	trueClus = []
+	for i, news_item in enumerate(observations):
+		doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
+		DHP.sequential_monte_carlo(doc, threshold)
 
-		lgObs = len(observations)
-		for i, news_item in enumerate(observations):
-			doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
-			DHP.sequential_monte_carlo(doc, threshold)
+		trueClus.append(news_item[-1][0])
 
-			if (i%100==1 and printRes) or (i>0 and True):
-				print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
-					  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
-					  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
+		if (i%100==1 and printRes) or (i>0 and False):
+			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
+				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
+				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
-			if i%1000==1:
-				while True:
-					try:
-						writeParticles(DHP, folderOut, nameOut)
-						break
-					except Exception as e:
-						print(i, e)
-						time.sleep(10)
-						continue
+			inferredClus = DHP.particles[0].docs2cluster_ID
+			print(NMI(trueClus, inferredClus))
 
-	profiler.print_stats()
-	profiler.dump_stats("Benchmark.txt")
-	pause()
+		if i%1000==1:
+			while True:
+				try:
+					writeParticles(DHP, folderOut, nameOut)
+					break
+				except Exception as e:
+					print(i, e)
+					time.sleep(10)
+					continue
+
 
 
 	while True:
@@ -455,19 +456,20 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 500
+		run_time = 1000
 		XP = "Overlap"
 
 		overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
 		overlap_temp = None  # Overlap between the kernels of the simulating process
 
-		voc_per_class = 10000  # Number of words available for each cluster
+		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
-		words_per_obs = 1000
+		words_per_obs = 5
 
 		run = 0
 
-		lamb0 = 0.0005
+		lamb0 = 0.1
+		theta0 = 0.01
 		means = np.array([3, 7, 11])
 		sigs = np.array([0.5, 0.5, 0.5])
 		folder = "data/Synth/"
@@ -479,7 +481,6 @@ if __name__ == '__main__':
 
 		arrR = [1.]
 		nbRuns = 1
-		theta0 = 0.01
 		alpha0 = 0.5
 		sample_num = 2000
 		particle_num = 8
@@ -497,7 +498,7 @@ if __name__ == '__main__':
 		for r in arrR:
 			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
 			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V)
-			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/(i*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 			i += 1
 
 

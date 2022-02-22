@@ -183,10 +183,10 @@ def plotProcess(events, means, sigs, alpha, whichclus=0):
 
 
 def generate(params):
-    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder = params
+    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder = params
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
-        a = np.random.random((nbClasses, len(means)))**2
+        a = np.random.dirichlet(alpha0, size=nbClasses)
         alpha[c]=a/np.sum(a)
     alpha = np.array(alpha)
 
@@ -226,33 +226,35 @@ def generate(params):
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
 nbClasses = 2
-run_time = 500
+run_time = 1000
 XP = "Overlap"
 
 overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
 overlap_temp = None  # Overlap between the kernels of the simulating process
 
-voc_per_class = 10000  # Number of words available for each cluster
+voc_per_class = 1000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 1000
+words_per_obs = 5
 
-run = 0
-
-lamb0 = 0.05
-theta0 = np.array([0.01]*voc_per_class)
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])
+
+
+lamb0 = 0.1
+theta0 = np.array([0.01]*voc_per_class)
+alpha0 = np.array([0.5]*len(means))
+
 folder = "data/Synth/"
 np.random.seed(1564)
 #params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
-params = (2, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, means, sigs, folder)
+params = (2, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, alpha0, means, sigs, folder)
 generate(params)
 pause()
 nbRuns = 10
 if XP == "Decorr":
     for perc_rand in np.array(list(range(11)))/10:
         for run in range(nbRuns):
-            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder)
+            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder)
             print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
             generate(params)
 elif XP == "Overlap":
@@ -260,7 +262,7 @@ elif XP == "Overlap":
     for overlap_voc in [0., 0.3, 0.5, 0.7, 0.9]:
         for overlap_temp in [0., 0.3, 0.5, 0.7]:
             for run in range(nbRuns):
-                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, means, sigs, folder)
+                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder)
                 print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
                 generate(params)
 
