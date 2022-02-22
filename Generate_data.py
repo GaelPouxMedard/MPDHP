@@ -72,22 +72,41 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
 def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0):
     # Generate text
     # Perfectly separated text content
-    theta0 = np.array([0.01]*voc_per_class)
-    voc_clusters = [np.array(list(range(int(voc_per_class)))) + c*voc_per_class for c in range(nbClasses)]
-    probs = np.array([np.random.multinomial(10000, pvals=np.random.dirichlet(theta0)).squeeze() for c in range(nbClasses)])
+    theta0 = np.array([theta0]*voc_per_class)
+    probs = np.array([sorted(np.random.multinomial(10000, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
     probs = probs/np.sum(probs, axis=-1)[:, None]
 
+    voc_clusters = [np.array(list(range(int(voc_per_class)))) + c*voc_per_class for c in range(nbClasses)]
 
+    probs_final = probs
     if overlap_voc is not None:
-        # Overlap
+        overlap=-1
+        probs_temp = None
+        while overlap<overlap_voc:
+            # Overlap
+            for c in range(nbClasses):
+                #voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
+                voc_clusters[c] -= int(c)
+
+            probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
+            for c in range(nbClasses):
+                probs_temp[c][voc_clusters[c]] = probs[c]
+            overlap = compute_overlap(list(range(voc_per_class*nbClasses)), probs_temp)
+
+        probs_final = []
         for c in range(nbClasses):
-            voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
+            probs_final.append(probs_temp[c][voc_clusters[c]])
+
+        # x = np.array(list(range(voc_per_class*nbClasses)))
+        # for c in range(nbClasses):
+        #     plt.plot(x, probs_tmp[c])
+        # plt.show()
 
     # Associate a fraction of vocabulary to each observation
     arrtxt = []
     for e in events:
         c_text = int(e[1])
-        arrtxt.append(np.random.choice(voc_clusters[c_text], size=words_per_obs, p=probs[c_text]))
+        arrtxt.append(np.random.choice(voc_clusters[c_text], size=words_per_obs, p=probs_final[c_text]))
 
     return arrtxt
 
@@ -112,6 +131,18 @@ def compute_overlap_temp(x, y1, y2):
     areaInter = np.trapz(np.min([y1,y2], axis=0), x=x)
 
     overlap = 2*areaInter/(area1+area2)
+
+    return overlap
+
+def compute_overlap(x, ys):
+    areas = [np.trapz(y, x=x) for y in ys]
+    ys = np.array(ys)
+    ysecondmin = np.copy(ys)
+    ysecondmin[ysecondmin==np.max(ysecondmin, axis=0)] = 0.
+    ysecondmin = np.max(ysecondmin, axis=0)
+    areaInter = np.trapz(ysecondmin, x=x)
+
+    overlap = len(areas)*areaInter/np.sum(areas)
 
     return overlap
 
@@ -154,7 +185,7 @@ def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
     np.save(folder+name+"_alpha", alpha)
 
 def plotProcess(events, means, sigs, alpha, whichclus=0):
-    colors = ["r", "b", "y", "g", "orange", "cyan","purple"]
+    colors = ["r", "b", "y", "g", "orange", "cyan","purple"]*10
     maxdt = max(means)+3*max(sigs)
     nbClasses = len(alpha)
     rangedt = np.linspace(0, maxdt, 100)
@@ -186,13 +217,25 @@ def generate(params):
     nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder = params
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
-        a = np.random.dirichlet([alpha0[0]]*nbClasses*len(means))
+        a = np.random.dirichlet([alpha0]*nbClasses*len(means))
         a = a.reshape((nbClasses, len(means)))
         alpha[c]=a
     alpha = np.array(alpha)
 
-    skew = 1
-    alpha = np.random.beta(alpha0, skew*alpha0, size=(nbClasses, nbClasses, len(means)))
+    alpha = np.zeros((nbClasses, nbClasses, len(means)))
+    for c in range(nbClasses):
+        toShare = np.random.dirichlet([alpha0]*nbClasses*2)
+        filled = [(-1, -1)]
+        for i in range(len(toShare)):
+            c2, k = -1, -1
+            while (c2,k) in filled:
+                c2 = np.random.randint(0, nbClasses)
+                k = np.random.randint(0, len(means))
+            filled.append((c2, k))
+            alpha[c,c2,k] = toShare[i]
+
+    # skew = nbClasses*2
+    # alpha = np.random.beta(alpha0, skew*alpha0, size=(nbClasses, nbClasses, len(means)))
 
     print(alpha)
 
@@ -205,7 +248,6 @@ def generate(params):
         em.fit(hawkes.timestamps)
         fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
         plt.show()
-        #sys.exit()
 
     if overlap_temp is not None:
         # Get the wanted temporal overlap
@@ -224,29 +266,29 @@ def generate(params):
     # Plot the process (univariate only e.g. diagonal of alpha)
     # print(len(events))
     # plotProcess(events, means, sigs, alpha, whichclus=1)
-    # pause()
+    # sys.exit()
 
     name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
-nbClasses = 3
-run_time = 1000
+nbClasses = 2
+run_time = 400
 XP = "Overlap"
 
-overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
+overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
 overlap_temp = None  # Overlap between the kernels of the simulating process
 
 voc_per_class = 1000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 100
+words_per_obs = 20
 
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])
 
 
-lamb0 = 0.1
-theta0 = np.array([0.01]*voc_per_class)
-alpha0 = np.array([0.05]*len(means))
+lamb0 = 1.
+theta0 = 1.
+alpha0 = 1
 
 folder = "data/Synth/"
 np.random.seed(1564)

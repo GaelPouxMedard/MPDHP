@@ -164,7 +164,7 @@ class Dirichlet_Hawkes_Process(object):
 
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
-		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index])
+		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index], alpha_true)
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
 		return alpha
@@ -488,8 +488,11 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				for c in infToTrue:
 					for c2 in DHP.particles[0].clusters[c].alpha_final:
 						err += numObs[c]*np.sum(np.abs(DHP.particles[0].clusters[c].alpha_final[c2] - alpha_true[infToTrue[c], infToTrue[c2]])**exponent)
-						print(DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
 						div += numObs[c]*len(reference_time)
+
+						if c2 not in DHP.particles[0].active_clusters: continue
+						if c not in DHP.particles[0].active_clusters: continue
+						print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
 				print("ERR", (err/(div+1e-20))**(1./exponent))
 
 		if i%1000==1:
@@ -518,22 +521,22 @@ if __name__ == '__main__':
 	try:
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
-		nbClasses = 3
-		run_time = 1000
+		nbClasses = 2
+		run_time = 400
 		XP = "Overlap"
 
-		overlap_voc = None  # Proportion of voc in common between a clusters and its direct neighbours
+		overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
 		overlap_temp = None  # Overlap between the kernels of the simulating process
 
 		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
-		words_per_obs = 100
+		words_per_obs = 20
 
 		run = 0
 
-		lamb0 = 0.1  # Cannot be inferred
-		theta0 = 0.01  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
-		alpha0 = 1.  # Uniform beta or Dirichlet prior
+		lamb0 = 1.  # Cannot be inferred
+		theta0 = 1  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
+		alpha0 = 0.1  # Uniform beta or Dirichlet prior
 		means = np.array([3, 7, 11])
 		sigs = np.array([0.5, 0.5, 0.5])
 
@@ -547,7 +550,7 @@ if __name__ == '__main__':
 
 		arrR = [0.]
 		nbRuns = 1
-		sample_num = 2000
+		sample_num = 200
 		particle_num = 8
 		printRes = True
 

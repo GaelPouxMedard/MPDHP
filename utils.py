@@ -250,7 +250,7 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 
 	return cluster
 
-def update_triggering_kernel_optim(cluster):
+def update_triggering_kernel_optim(cluster, alpha_true=None):
 	''' procedure of triggering kernel for SMC
 		@param:
 			1. timeseq: list, time sequence including current time
@@ -279,9 +279,14 @@ def update_triggering_kernel_optim(cluster):
 	#update_weight = update_weight.reshape(-1,1)
 	#alpha = np.sum(update_weight * alphas, axis = 0)
 	alpha = np.tensordot(update_weight, alphas, axes=1)
-	#print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
-	#print(np.max(update_weight), np.min(update_weight), np.mean(update_weight), update_weight)
-	#print(len(update_weight[update_weight>0]), alpha)
+
+	print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
+	print(np.max(update_weight), np.min(update_weight), np.mean(update_weight))#, update_weight)
+	print(alpha_true)
+	print(alphas[np.where(logLikelihood==np.max(logLikelihood))[0]])#, alpha)
+
+
+	print()
 
 
 	return alpha
