@@ -1,3 +1,4 @@
+import pickle
 import sys
 import os
 import numpy as np
@@ -5,6 +6,7 @@ import time
 from copy import deepcopy as copy
 from utils import *
 from sklearn.metrics import normalized_mutual_info_score as NMI
+import gzip
 
 np.random.seed(12345)
 
@@ -220,6 +222,7 @@ class Dirichlet_Hawkes_Process(object):
 			del particle.clusters[cluster_index].alphas
 			del particle.clusters[cluster_index].log_priors
 			del particle.clusters[cluster_index].likelihood_samples
+			del particle.clusters[cluster_index].likelihood_samples_sansLambda
 			del particle.clusters[cluster_index].triggers
 			del particle.clusters[cluster_index].integ_triggers
 
@@ -411,6 +414,16 @@ def readObservations(folder, name, outputFolder):
 	V = len(wdToIndex)
 	return observations, V
 
+def saveDHP(DHP, folderOut, nameOut):
+	while True:
+		try:
+			writeParticles(DHP, folderOut, nameOut)
+			break
+		except Exception as e:
+			print(i, e)
+			time.sleep(10)
+			continue
+
 def writeParticles(DHP, folderOut, nameOut):
 	def getLikTxt(cluster, theta0=None):
 		cls_word_distribution = np.array(cluster.word_distribution, dtype=int)
@@ -435,6 +448,65 @@ def writeParticles(DHP, folderOut, nameOut):
 		log_prob -= gammaln(cls_word_count+1)
 
 		return log_prob
+
+	import sys
+	import inspect
+
+	def get_size(obj, seen=None):
+		"""Recursively finds size of objects in bytes"""
+		size = sys.getsizeof(obj)
+		if seen is None:
+			seen = set()
+		obj_id = id(obj)
+		if obj_id in seen:
+			return 0
+
+		# Important mark as seen *before* entering recursion to gracefully handle
+		# self-referential objects
+		seen.add(obj_id)
+		if hasattr(obj, '__dict__'):
+			for cls in obj.__class__.__mro__:
+				if '__dict__' in cls.__dict__:
+					d = cls.__dict__['__dict__']
+					if inspect.isgetsetdescriptor(d) or inspect.ismemberdescriptor(d):
+						size += get_size(obj.__dict__, seen)
+					break
+		if isinstance(obj, dict):
+			size += sum((get_size(v, seen) for v in obj.values()))
+			size += sum((get_size(k, seen) for k in obj.keys()))
+		elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+			size += sum((get_size(i, seen) for i in obj))
+
+		if hasattr(obj, '__slots__'): # can have __slots__ with __dict__
+			size += sum(get_size(getattr(obj, s), seen) for s in obj.__slots__ if hasattr(obj, s))
+
+		return size
+
+	try:
+		print("particles", get_size(DHP.particles[0])/1000**2, sep="\t")
+		print("clusters", get_size(DHP.particles[0].clusters)/1000**2, sep="\t")
+		print()
+		for c in DHP.particles[0].clusters:
+			print(f"{c} cluster", get_size(DHP.particles[0].clusters[c])/1000**2, sep="\t")
+			print(f"{c} alpha", get_size(DHP.particles[0].clusters[c].alpha)/1000**2, sep="\t")
+			print(f"{c} alpha_final", get_size(DHP.particles[0].clusters[c].alpha_final)/1000**2, sep="\t")
+			print(f"{c} word_distribution", get_size(DHP.particles[0].clusters[c].word_distribution)/1000**2, sep="\t")
+			print(f"{c} word_count", get_size(DHP.particles[0].clusters[c].word_count)/1000**2, sep="\t")
+			try:
+				print(f"{c} alphas", get_size(DHP.particles[0].clusters[c].alphas)/1000**2, sep="\t")
+				print(f"{c} log_priors", get_size(DHP.particles[0].clusters[c].log_priors)/1000**2, sep="\t")
+				print(f"{c} likelihood_samples", get_size(DHP.particles[0].clusters[c].likelihood_samples)/1000**2, sep="\t")
+				print(f"{c} likelihood_samples_sansLambda", get_size(DHP.particles[0].clusters[c].likelihood_samples_sansLambda)/1000**2, sep="\t")
+				print(f"{c} triggers", get_size(DHP.particles[0].clusters[c].triggers)/1000**2, sep="\t")
+				print(f"{c} integ_triggers", get_size(DHP.particles[0].clusters[c].integ_triggers)/1000**2, sep="\t")
+			except:
+				pass
+			print()
+		print()
+	except Exception as e:
+		print(e)
+		pass
+
 
 	with open(folderOut+nameOut+"_particles.txt", "w+") as f:
 		for pIter, p in enumerate(DHP.particles):
@@ -536,25 +608,9 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				print("ERR", (err/(div+1e-20))**(1./exponent))
 
 		if i%1000==1:
-			while True:
-				try:
-					writeParticles(DHP, folderOut, nameOut)
-					break
-				except Exception as e:
-					print(i, e)
-					time.sleep(10)
-					continue
+			saveDHP(DHP, folderOut, nameOut)
 
-
-
-	while True:
-		try:
-			writeParticles(DHP, folderOut, nameOut)
-			break
-		except Exception as e:
-			print(e)
-			time.sleep(10)
-			continue
+	saveDHP(DHP, folderOut, nameOut)
 
 
 if __name__ == '__main__':
@@ -562,7 +618,7 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 100
+		run_time = 200
 		XP = "Overlap"
 
 		overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
@@ -606,15 +662,15 @@ if __name__ == '__main__':
 		for r in arrR:
 			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
 
-			import pprofile
-			profiler = pprofile.Profile()
-			with profiler:
+			# import pprofile
+			# profiler = pprofile.Profile()
+			# with profiler:
 
-				run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
+			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
 
-			profiler.print_stats()
-			profiler.dump_stats("Benchmark.txt")
-			pause()
+			# profiler.print_stats()
+			# profiler.dump_stats("Benchmark.txt")
+			# pause()
 
 			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 			i += 1
