@@ -8,6 +8,16 @@ from sklearn.metrics import normalized_mutual_info_score as NMI
 
 np.random.seed(12345)
 
+"""
+import pprofile
+profiler = pprofile.Profile()
+with profiler:
+    RhovsT(g, 0.1, 0.28999, 1, 1000)
+profiler.print_stats()
+profiler.dump_stats("Benchmark.txt")
+pause()
+"""
+
 class Dirichlet_Hawkes_Process(object):
 	"""docstring for Dirichlet Hawkes Prcess"""
 	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r):
@@ -20,7 +30,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.reference_time = reference_time
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
-		self.horizon = (np.max(self.reference_time)+10*np.max(self.bandwidth))
+		self.horizon = (max(self.reference_time)+10*max(self.bandwidth))
 		self.sample_num = sample_num
 		self.particles = []
 		for i in range(particle_num):
@@ -76,48 +86,61 @@ class Dirichlet_Hawkes_Process(object):
 			particle = self.update_active_clusters(particle)
 
 			# Posterior probability for each cluster
+			clusters_timeseq = particle.active_timestamps[particle.active_timestamps[:, 1]<doc.timestamp, 0]
 			timeseq = doc.timestamp - particle.active_timestamps[particle.active_timestamps[:, 1]<doc.timestamp, 1]
 			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(list(set(particle.active_timestamps[:, 0]))))}
-			if len(timeseq)==0:
-				unweighted_triggering_kernel=0
+			if len(timeseq)==0:  # Because kernels are rigorously null at this point, making this the only possible choice
+				selected_cluster_index=0
 			else:
 				RBF = RBF_kernel(self.reference_time, timeseq, self.bandwidth)  # num_time_points, size_kernel
 				unweighted_triggering_kernel = np.zeros((len(particle.active_clusters), len(self.reference_time)))
-				for (clus, trig) in zip(particle.active_timestamps[:, 0], RBF):
+				for clus in set(clusters_timeseq):
 					indclus = particle.active_clus_to_ind[int(clus)]
-					unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
+					trigg = RBF[clusters_timeseq==clus]
+					nb = len(trigg)
+					if nb==1:
+						unweighted_triggering_kernel[indclus] = trigg[0]
+						continue
+					if nb not in ones: ones[nb] = np.ones((nb))
+					unweighted_triggering_kernel[indclus] = ones[nb].dot(trigg)
 
-			for active_cluster_index in particle.active_clusters:
-				active_cluster_indexes.append(active_cluster_index)
-				alpha = particle.clusters[active_cluster_index].alpha
-				#print("==", active_cluster_index, unweighted_triggering_kernel.shape, alpha.shape)
-				rate = np.sum(alpha*unweighted_triggering_kernel)
-				#rate = triggering_kernel(alpha, self.reference_time, time_intervals, self.bandwidth)
+				for active_cluster_index in particle.active_clusters:
+					active_cluster_indexes.append(active_cluster_index)
+					alpha = particle.clusters[active_cluster_index].alpha
 
-				# Powered Dirichlet-Hawkes prior
-				active_cluster_rates.append(rate)
+					mat=unweighted_triggering_kernel*alpha
+					lg = mat.shape[0]
+					if lg not in ones: ones[lg] = np.ones((lg))
+					mat = ones[lg].dot(mat)
+					lg = mat.shape[0]
+					if lg not in ones: ones[lg] = np.ones((lg))
+					mat = ones[lg].dot(mat)
+					rate = mat
 
-				# Language model likelihood
-				cls_word_distribution = particle.clusters[active_cluster_index].word_distribution + doc.word_distribution
-				cls_word_count = particle.clusters[active_cluster_index].word_count + doc.word_count
-				cls_log_dirichlet_multinomial_distribution = log_dirichlet_multinomial_distribution(cls_word_distribution, doc.word_distribution, cls_word_count, doc.word_count, self.vocabulary_size, self.theta0)
-				active_cluster_textual_probs.append(cls_log_dirichlet_multinomial_distribution)
+					# Powered Dirichlet-Hawkes prior
+					active_cluster_rates.append(rate)
 
-			# Posteriors to probabilities
-			active_cluster_logrates = self.r*np.log(np.array(active_cluster_rates)+1e-100)
-			self.active_cluster_logrates = {c: active_cluster_logrates[i+1] for i, c in enumerate(particle.active_clusters)}
-			self.active_cluster_logrates[0] = active_cluster_logrates[0]
-			cluster_selection_probs = active_cluster_logrates + active_cluster_textual_probs # in log scale
-			cluster_selection_probs = cluster_selection_probs - np.max(cluster_selection_probs) # prevent overflow
-			cluster_selection_probs = np.exp(cluster_selection_probs)
-			cluster_selection_probs = cluster_selection_probs / np.ones((len(cluster_selection_probs))).dot(cluster_selection_probs)  # Normalize
+					# Language model likelihood
+					cls_word_distribution = particle.clusters[active_cluster_index].word_distribution + doc.word_distribution
+					cls_word_count = particle.clusters[active_cluster_index].word_count + doc.word_count
+					cls_log_dirichlet_multinomial_distribution = log_dirichlet_multinomial_distribution(cls_word_distribution, doc.word_distribution, cls_word_count, doc.word_count, self.vocabulary_size, self.theta0)
+					active_cluster_textual_probs.append(cls_log_dirichlet_multinomial_distribution)
 
-			# print(cluster_selection_probs, active_cluster_indexes)
-			# # Random cluster selection
-			# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
-			# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
+				# Posteriors to probabilities
+				active_cluster_logrates = self.r*np.log(np.array(active_cluster_rates)+1e-100)
+				self.active_cluster_logrates = {c: active_cluster_logrates[i+1] for i, c in enumerate(particle.active_clusters)}
+				self.active_cluster_logrates[0] = active_cluster_logrates[0]
+				cluster_selection_probs = active_cluster_logrates + active_cluster_textual_probs # in log scale
+				cluster_selection_probs = cluster_selection_probs - max(cluster_selection_probs) # prevent overflow
+				cluster_selection_probs = np.exp(cluster_selection_probs)
+				cluster_selection_probs = cluster_selection_probs / np.ones((len(cluster_selection_probs))).dot(cluster_selection_probs)  # Normalize
 
-			selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
+				# print(cluster_selection_probs, active_cluster_indexes)
+				# # Random cluster selection
+				# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
+				# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
+
+				selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
 
 
 			# New cluster drawn
@@ -156,9 +179,9 @@ class Dirichlet_Hawkes_Process(object):
 			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
 			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newVec[:, None, :]))
 			if particle.clusters[cluster_index].alpha is not None:
-				particle.clusters[cluster_index].alpha = np.vstack((particle.clusters[cluster_index].alpha, np.mean(newVec[:, None, :], axis=0)))
+				particle.clusters[cluster_index].alpha = np.vstack((particle.clusters[cluster_index].alpha, newVec[0, None, :]))
 			else:
-				particle.clusters[cluster_index].alpha = np.array(np.mean(newVec[:, None, :], axis=0))
+				particle.clusters[cluster_index].alpha = newVec[0, None, :]
 		return particle.clusters
 
 	def parameter_estimation(self, particle, selected_cluster_index):
@@ -216,7 +239,12 @@ class Dirichlet_Hawkes_Process(object):
 		log_update_prob = log_dirichlet_multinomial_distribution(cls_word_distribution, doc_word_distribution, cls_word_count, doc_word_count, self.vocabulary_size, self.theta0)
 
 		lograte = np.exp(self.active_cluster_logrates[selected_cluster_index])
-		lograte = lograte / np.sum(np.exp(list(self.active_cluster_logrates.values())))
+
+		div = self.active_cluster_logrates.values()
+		lg = len(div)
+		if lg not in ones: ones[lg] = np.ones((lg))
+
+		lograte = lograte / ones[lg].dot(np.exp(list(self.active_cluster_logrates.values())))
 
 		log_update_prob += lograte
 
@@ -229,7 +257,7 @@ class Dirichlet_Hawkes_Process(object):
 			log_update_probs.append(particle.log_update_prob)
 		weights = np.array(weights)
 		log_update_probs = np.array(log_update_probs)
-		log_update_probs = log_update_probs - np.max(log_update_probs) # Prevents overflow
+		log_update_probs = log_update_probs - max(log_update_probs) # Prevents overflow
 		update_probs = np.exp(log_update_probs)
 		weights = weights * update_probs
 		weights = weights / np.sum(weights) # normalization
@@ -477,7 +505,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
 			inferredClus = DHP.particles[0].docs2cluster_ID
-			print("NMI", NMI(trueClus, inferredClus))
+			print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
 			# On n'évalue pas les fonctions d'intensité : problèmes d'échangeabilité,
 			# et un même Hawkes peut être dissocié en deux dynamiques complémentaires
@@ -534,10 +562,10 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 5000
+		run_time = 100
 		XP = "Overlap"
 
-		overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
+		overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
 		overlap_temp = None  # Overlap between the kernels of the simulating process
 
 		voc_per_class = 1000  # Number of words available for each cluster
@@ -546,8 +574,8 @@ if __name__ == '__main__':
 
 		run = 0
 
-		lamb0 = 0.01  # Cannot be inferred
-		theta0 = 1  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
+		lamb0 = 0.1  # Cannot be inferred
+		theta0 = 10.  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
 		alpha0 = 1.  # Uniform beta or Dirichlet prior
 		means = np.array([3, 7, 11])
 		sigs = np.array([0.5, 0.5, 0.5])
@@ -560,10 +588,10 @@ if __name__ == '__main__':
 
 		ensureFolder(outputFolder)
 
-		arrR = [1.]
+		arrR = [0.]
 		nbRuns = 1
-		sample_num = 20000
-		particle_num = 1
+		sample_num = 2000
+		particle_num = 8
 		printRes = True
 
 
@@ -577,7 +605,17 @@ if __name__ == '__main__':
 	for run in range(nbRuns):
 		for r in arrR:
 			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
-			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
+
+			import pprofile
+			profiler = pprofile.Profile()
+			with profiler:
+
+				run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
+
+			profiler.print_stats()
+			profiler.dump_stats("Benchmark.txt")
+			pause()
+
 			print(f"r={r} - RUN {run}/{nbRuns} COMPLETE - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 			i += 1
 

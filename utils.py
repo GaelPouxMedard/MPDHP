@@ -244,10 +244,8 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 			indclus = indToClus[int(clus)]
 			unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
-
 		cluster.triggers = np.sum(alphas*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
-
-		cluster.likelihood_samples_sansLambda += np.log(cluster.triggers)
+		cluster.likelihood_samples_sansLambda += np.log(cluster.triggers + 1e-20)
 
 	cluster.integ_triggers += alphas_times_gtheta
 
@@ -271,7 +269,7 @@ def update_triggering_kernel_optim(cluster, alpha_true=None, particle = None, Di
 	log_priors = cluster.log_priors
 	logLikelihood = cluster.likelihood_samples
 	log_update_weight = log_priors + logLikelihood
-	log_update_weight = log_update_weight - np.max(log_update_weight)  # Prevents overflow
+	log_update_weight = log_update_weight - max(log_update_weight)  # Prevents overflow
 	update_weight = np.exp(log_update_weight)
 
 	#update_weight[update_weight<np.mean(update_weight)]=0.  # Removes noise of obviously unfit alpha samples
@@ -283,67 +281,8 @@ def update_triggering_kernel_optim(cluster, alpha_true=None, particle = None, Di
 
 	#update_weight = update_weight.reshape(-1,1)
 	#alpha = np.sum(update_weight * alphas, axis = 0)
-	alpha = np.tensordot(update_weight, alphas, axes=1)
-
-	if len(particle.active_clusters)==2 and False:
-		#alpha_true = alphas[0]
-		events = list(zip(particle.docs2cluster_ID, particle.all_timestamps))
-		events = np.array(events)
-		loglik = 0
-		T=0
-		#print(particle.docs2cluster_ID)
-		triggerstot= 0.
-		for c,t in events:
-			c = c-1
-			c = int(c)
-			T = t + DirProc.horizon
-			tu = EfficientImplementation(t, DirProc.reference_time, DirProc.bandwidth, epsilon=1e-10)
-			events_cons = events[events[:, 1]>tu]
-			events_cons = events_cons[events_cons[:, 1] <= t]
-			#events_cons = np.array([e for e in events_cons if e[0] in particle.active_clusters])
-			if len(events_cons)==0: continue
-
-			clusters_timestamps = events_cons[:, 0]
-			timestamps = events_cons[:, 1]
-			time_intervals = t - timestamps[timestamps<t]
-
-			integ_RBF = g_theta(np.array([t]), DirProc.reference_time, DirProc.bandwidth, T)
-			unweighted_integ_triggering_kernel = np.zeros((len(alpha), len(DirProc.reference_time)))
-			indToClus = {int(ci): i for i,ci in enumerate(sorted(list(set(clusters_timestamps))))}
-			for (clus, integ_trig) in zip(clusters_timestamps, integ_RBF):
-				indclus = indToClus[int(clus)]
-				unweighted_integ_triggering_kernel[indclus] = unweighted_integ_triggering_kernel[indclus] + integ_trig
-
-			integ_trigger = np.sum(alpha_true[c] * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
-
-			loglik -= integ_trigger
-
-			triggers = 0.
-			if len(time_intervals)!=0:
-				RBF = RBF_kernel(DirProc.reference_time, time_intervals, DirProc.bandwidth)  # num_time_points, size_kernel
-				unweighted_triggering_kernel = np.zeros((len(alpha), len(DirProc.reference_time)))
-				active_clus_to_ind = {int(ci): i for i,ci in enumerate(sorted(list(set(clusters_timestamps))))}
-				for (clus, trig) in zip(clusters_timestamps, RBF):
-					indclus = active_clus_to_ind[int(clus)]
-					unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
-
-				triggers = np.sum(alpha_true[c]*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
-
-				triggerstot += np.log(triggers)
-				loglik += np.log(triggers)
-
-
-
-		loglik -= DirProc.base_intensity * T
-
-		# print(loglik, np.max(logLikelihood))
-	# print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
-	# print(np.max(update_weight), np.min(update_weight), np.mean(update_weight))#, update_weight)
-	# print(alpha_true)
-	# print(alpha)
-	# print(alphas[np.where(logLikelihood==np.max(logLikelihood))[0]])#, alpha)
-	# print()
-
+	#alpha = np.tensordot(update_weight, alphas, axes=1)
+	alpha = update_weight.dot(alphas.transpose(1,0,2))
 
 	return alpha
 
@@ -362,7 +301,7 @@ def log_dirichlet_multinomial_distribution(cls_word_distribution, doc_word_distr
 	#arrones = np.ones((len(priors)))
 	#priors_sum = np.sum(priors)
 	#priors_sum = priors.dot(arrones)
-	priors_sum = priors[0]*len(priors)  # ATTENTION PRIOR[0] SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
+	priors_sum = priors[0]*vocabulary_size  # ATTENTION PRIOR[0] SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
 	log_prob = 0
 	log_prob += gammaln(cls_word_count - doc_word_count + priors_sum)
 	log_prob -= gammaln(cls_word_count + priors_sum)

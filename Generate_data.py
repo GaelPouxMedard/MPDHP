@@ -73,7 +73,7 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
     # Generate text
     # Perfectly separated text content
     theta0 = np.array([theta0]*voc_per_class)
-    probs = np.array([sorted(np.random.multinomial(10000, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
+    probs = np.array([sorted(np.random.multinomial(1e9, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
     probs = probs/np.sum(probs, axis=-1)[:, None]
 
     voc_clusters = [np.array(list(range(int(voc_per_class)))) + c*voc_per_class for c in range(nbClasses)]
@@ -97,10 +97,10 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
         for c in range(nbClasses):
             probs_final.append(probs_temp[c][voc_clusters[c]])
 
-        # x = np.array(list(range(voc_per_class*nbClasses)))
-        # for c in range(nbClasses):
-        #     plt.plot(x, probs_tmp[c])
-        # plt.show()
+        x = np.array(list(range(voc_per_class*nbClasses)))
+        for c in range(nbClasses):
+            plt.plot(x, probs_temp[c])
+        plt.show()
 
     # Associate a fraction of vocabulary to each observation
     arrtxt = []
@@ -303,10 +303,10 @@ def generate(params):
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
 nbClasses = 2
-run_time = 5000
+run_time = 100
 XP = "Overlap"
 
-overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
+overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
 overlap_temp = None  # Overlap between the kernels of the simulating process
 
 voc_per_class = 1000  # Number of words available for each cluster
@@ -318,8 +318,8 @@ sigs = np.array([0.5, 0.5, 0.5])
 
 
 lamb0 = 0.05
-theta0 = 1.
-alpha0 = 1
+theta0 = 10
+alpha0 = 1.
 
 folder = "data/Synth/"
 np.random.seed(1564)
