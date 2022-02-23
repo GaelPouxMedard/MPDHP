@@ -14,19 +14,21 @@ class Document(object):
 		self.word_count = np.array(word_count, dtype=int)
 		
 class Cluster(object):
-	def __init__(self, index, num_samples, active_clusters, alpha0, size_kernel):# alpha, word_distribution, documents, word_count):
+	def __init__(self, index, num_samples, active_clusters, alpha0, size_kernel, multivariate=True, index_cluster=None):# alpha, word_distribution, documents, word_count):
 		super(Cluster, self).__init__()
 		self.index = index
 		self.alpha = None
 		self.alpha_final = {}
 		self.word_distribution = None
 		self.word_count = 0
+		self.multivariate = multivariate
 		self.likelihood_samples = np.zeros((num_samples), dtype=np.float)
 		self.likelihood_samples_sansLambda = np.zeros((num_samples), dtype=np.float)
 		self.triggers = np.zeros((num_samples), dtype=np.float)
 		self.integ_triggers = np.zeros((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
-		vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True)
+		vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True,
+									   multivariate=self.multivariate, index_cluster=index_cluster)
 		self.alphas = vectors
 		self.log_priors = priors
 
@@ -49,23 +51,28 @@ class Particle(object):
 		self.log_update_prob = 0
 		self.clusters = {}  # can be store in the process for efficient memory implementation, key = cluster_index, value = cluster object
 		self.docs2cluster_ID = []  # the element is the cluster index of a sequence of document ordered by the index of document
-		self.all_timestamps = []  # the element is the cluster index of a sequence of document ordered by the index of document
+		self.all_timestamps = []  # same order as docs2cluster_ID
 		self.active_clusters = {}  # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
-		self.active_timestamps = None
+		self.active_timestamps = None  # list of tuples (time, cluster)
 		self.cluster_num_by_now = 0
-		self.active_clus_to_ind = None
+		self.active_clus_to_ind = None  # Links the order of active clusters to their position in cluster.alpha
 
 	def __repr__(self):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
 
-def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False):
+def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False, multivariate=True, index_cluster=None):
 	vec = None
 	prior = None
 	if method=="dirichlet":
 		vec = dirichlet(alpha0, num_samples, active_clusters, size_kernel)
 	if method=="beta":
 		vec = beta(alpha0, num_samples, active_clusters, size_kernel)
+
+	if not multivariate:
+		allOthers = list(range(vec.shape[1])).remove(index_cluster)
+		vec[:, allOthers] *= 0
+
 	vec[vec==0.] = 1e-10
 	vec[vec==1.] = 1-1e-10
 

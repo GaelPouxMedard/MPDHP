@@ -76,7 +76,7 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
     probs = np.array([sorted(np.random.multinomial(1e9, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
     probs = probs/np.sum(probs, axis=-1)[:, None]
 
-    voc_clusters = [np.array(list(range(int(voc_per_class)))) + c*voc_per_class for c in range(nbClasses)]
+    voc_clusters = [np.array(list(range(int(voc_per_class))), dtype=int) + c*voc_per_class for c in range(nbClasses)]
 
     probs_final = probs
     if overlap_voc is not None:
@@ -97,10 +97,14 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
         for c in range(nbClasses):
             probs_final.append(probs_temp[c][voc_clusters[c]])
 
-        x = np.array(list(range(voc_per_class*nbClasses)))
-        for c in range(nbClasses):
-            plt.plot(x, probs_temp[c])
-        plt.show()
+        # x = np.array(list(range(voc_per_class*nbClasses)))
+        # for c in range(nbClasses):
+        #     plt.plot(x, probs_temp[c])
+        # plt.show()
+
+    for c in range(len(voc_clusters)):
+        for w in range(len(voc_clusters[c])):
+            voc_clusters[c][w] = int(voc_clusters[c][w])
 
     # Associate a fraction of vocabulary to each observation
     arrtxt = []
@@ -175,7 +179,7 @@ def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
     with open(folder+name+"_events.txt", "w+") as f:
         for i, e in enumerate(events):
             content = ",".join(map(str, list(arrtxt[int(e[3])])))
-            txt = str(e[2])+"\t"+content+str(e[0])+"\t"+str(e[1])+"\t"+"\n"
+            txt = str(e[2])+"\t"+content+"\t"+str(e[0])+"\t"+str(e[1])+"\t"+"\n"
             f.write(txt)
 
     with open(folder+name+"_lamb0.txt", "w+") as f:
@@ -237,7 +241,7 @@ def plotProcess(events, means, sigs, alpha):
 
 
 def generate(params):
-    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder = params
+    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder = params
     alpha = np.zeros((nbClasses, nbClasses, len(means)))
     for c in range(nbClasses):
         a = np.random.dirichlet([alpha0]*nbClasses*len(means))
@@ -245,17 +249,17 @@ def generate(params):
         alpha[c]=a
     alpha = np.array(alpha)
 
-    alpha = np.zeros((nbClasses, nbClasses, len(means)))
-    for c in range(nbClasses):
-        toShare = np.random.dirichlet([alpha0]*nbClasses*2)
-        filled = [(-1, -1)]
-        for i in range(len(toShare)):
-            c2, k = -1, -1
-            while (c2,k) in filled:
-                c2 = np.random.randint(0, nbClasses)
-                k = np.random.randint(0, len(means))
-            filled.append((c2, k))
-            alpha[c,c2,k] = toShare[i]
+    # alpha = np.zeros((nbClasses, nbClasses, len(means)))
+    # for c in range(nbClasses):
+    #     toShare = np.random.dirichlet([alpha0]*nbClasses*2)
+    #     filled = [(-1, -1)]
+    #     for i in range(len(toShare)):
+    #         c2, k = -1, -1
+    #         while (c2,k) in filled:
+    #             c2 = np.random.randint(0, nbClasses)
+    #             k = np.random.randint(0, len(means))
+    #         filled.append((c2, k))
+    #         alpha[c,c2,k] = toShare[i]
 
     # alpha = np.zeros((nbClasses, nbClasses, len(means)))
     # for c in range(nbClasses):
@@ -269,7 +273,7 @@ def generate(params):
     # Get timestamps and temporal clusters
     events, hawkes = simulHawkes(lamb0, alpha, means, sigs, run_time=run_time)
     print(len(events), "events")
-    visualize = True
+    visualize = False
     if visualize:
         plotProcess(events, means, sigs, alpha)
         plt.show()
@@ -299,11 +303,11 @@ def generate(params):
     arrtxt = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
 
-    name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
+    name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
 nbClasses = 2
-run_time = 100
+run_time = 3000
 XP = "Overlap"
 
 overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
@@ -323,24 +327,24 @@ alpha0 = 1.
 
 folder = "data/Synth/"
 np.random.seed(1564)
-#params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, means, sigs, folder)
+#params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, means, sigs, folder)
 params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, alpha0, means, sigs, folder)
 generate(params)
 pause()
 nbRuns = 10
 if XP == "Decorr":
     for perc_rand in np.array(list(range(11)))/10:
-        for run in range(nbRuns):
-            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder)
-            print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
+        for DS in range(nbRuns):
+            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder)
+            print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - DS={DS}")
             generate(params)
 elif XP == "Overlap":
     np.random.seed(14776)
     for overlap_voc in [0., 0.3, 0.5, 0.7, 0.9]:
         for overlap_temp in [0., 0.3, 0.5, 0.7]:
-            for run in range(nbRuns):
-                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, run, lamb0, theta0, alpha0, means, sigs, folder)
-                print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - run={run}")
+            for DS in range(nbRuns):
+                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder)
+                print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - DS={DS}")
                 generate(params)
 
 

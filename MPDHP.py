@@ -22,9 +22,10 @@ pause()
 
 class Dirichlet_Hawkes_Process(object):
 	"""docstring for Dirichlet Hawkes Prcess"""
-	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r):
+	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r, multivariate):
 		super(Dirichlet_Hawkes_Process, self).__init__()
 		self.r = r
+		self.multivariate = multivariate
 		self.particle_num = particle_num
 		self.base_intensity = base_intensity
 		self.theta0 = theta0
@@ -69,8 +70,12 @@ class Dirichlet_Hawkes_Process(object):
 			particle.cluster_num_by_now += 1
 			selected_cluster_index = particle.cluster_num_by_now
 			particle.active_clusters[selected_cluster_index] = [doc.timestamp]
+			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(particle.active_clusters))}
 			particle.active_timestamps = np.array([[selected_cluster_index, doc.timestamp]])
-			selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num, active_clusters=particle.active_clusters, alpha0=self.alpha0, size_kernel=len(self.reference_time))
+			selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num,
+									   active_clusters=particle.active_clusters, alpha0=self.alpha0,
+									   size_kernel=len(self.reference_time),
+									   multivariate=self.multivariate, index_cluster=particle.active_clus_to_ind[selected_cluster_index])
 			selected_cluster.add_document(doc)
 			particle.clusters[selected_cluster_index] = selected_cluster #.append(selected_cluster)
 			particle.docs2cluster_ID.append(selected_cluster_index)
@@ -90,7 +95,7 @@ class Dirichlet_Hawkes_Process(object):
 			# Posterior probability for each cluster
 			clusters_timeseq = particle.active_timestamps[particle.active_timestamps[:, 1]<doc.timestamp, 0]
 			timeseq = doc.timestamp - particle.active_timestamps[particle.active_timestamps[:, 1]<doc.timestamp, 1]
-			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(list(set(particle.active_timestamps[:, 0]))))}
+			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(particle.active_clusters))}
 			if len(timeseq)==0:  # Because kernels are rigorously null at this point, making this the only possible choice
 				selected_cluster_index=0
 			else:
@@ -144,14 +149,17 @@ class Dirichlet_Hawkes_Process(object):
 
 				selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
 
-
 			# New cluster drawn
 			if selected_cluster_index == 0:
 				particle.cluster_num_by_now += 1
 				selected_cluster_index = particle.cluster_num_by_now
 				self.active_cluster_logrates[selected_cluster_index] = self.active_cluster_logrates[0]
 				particle.active_clusters[selected_cluster_index] = [doc.timestamp]
-				selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num, active_clusters=particle.active_clusters, alpha0=self.alpha0, size_kernel=len(self.reference_time))
+				particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(particle.active_clusters))}
+				selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num,
+										   active_clusters=particle.active_clusters, alpha0=self.alpha0,
+										   size_kernel=len(self.reference_time),
+										   multivariate=self.multivariate, index_cluster=particle.active_clus_to_ind[selected_cluster_index])
 				selected_cluster.add_document(doc)
 				particle.clusters[selected_cluster_index] = selected_cluster
 				particle.docs2cluster_ID.append(selected_cluster_index)
@@ -178,6 +186,9 @@ class Dirichlet_Hawkes_Process(object):
 				continue
 			newVec, newPriors = draw_vectors(alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
 			newVec = newVec.squeeze()
+			if not self.multivariate:
+				newVec *= 0.
+				newPriors *= 0.
 			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
 			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newVec[:, None, :]))
 			if particle.clusters[cluster_index].alpha is not None:
@@ -197,10 +208,10 @@ class Dirichlet_Hawkes_Process(object):
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
 		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index], alpha_true, particle, self)
+
 		for clus in particle.active_clusters:
-			if particle.active_clus_to_ind is None: continue
-			if clus in particle.active_clus_to_ind:  # Otherwise it's a new cluster
-				particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
+			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
+
 		return alpha
 
 	def update_active_clusters(self, particle):
@@ -405,7 +416,6 @@ def readObservations(folder, name, outputFolder):
 			uniquewords = [wdToIndex[un] for un in uniquewords]
 			uniquewords, cntwords = np.array(uniquewords, dtype=int), np.array(cntwords, dtype=int)
 
-
 			tup = (i, timestamp, (uniquewords, cntwords), (clusTxt, clusTmp))
 			observations.append(tup)
 	with open(outputFolder+name+"_indexWords.txt", "w+", encoding="utf-8") as f:
@@ -414,116 +424,36 @@ def readObservations(folder, name, outputFolder):
 	V = len(wdToIndex)
 	return observations, V
 
-def saveDHP(DHP, folderOut, nameOut):
+def saveDHP(DHP, folderOut, nameOut, time=-1):
 	while True:
 		try:
-			writeParticles(DHP, folderOut, nameOut)
+			writeParticles(DHP, folderOut, nameOut, time)
 			break
 		except Exception as e:
-			print(i, e)
+			print("ERREUR", i, e)
 			time.sleep(10)
 			continue
 
-def writeParticles(DHP, folderOut, nameOut):
-	def getLikTxt(cluster, theta0=None):
-		cls_word_distribution = np.array(cluster.word_distribution, dtype=int)
-		cls_word_count = int(cluster.word_count)
+def writeParticles(DHP, folderOut, nameOut, time):
+	DHP_copy = copy(DHP)
+	for i in range(len(DHP_copy.particles)):
+		for c in DHP_copy.particles[i].clusters:
+			if c in DHP_copy.particles[i].active_clusters:
+				del DHP_copy.particles[i].clusters[c].alphas
+				del DHP_copy.particles[i].clusters[c].log_priors
+				del DHP_copy.particles[i].clusters[c].alpha
+				del DHP_copy.particles[i].clusters[c].likelihood_samples
+				del DHP_copy.particles[i].clusters[c].likelihood_samples_sansLambda
+				del DHP_copy.particles[i].clusters[c].triggers
+				del DHP_copy.particles[i].clusters[c].integ_triggers
 
-		vocabulary_size = len(cls_word_distribution)
-		if theta0 is None:
-			theta0 = 0.01
+	if time==-1: txtTime = "_final"
+	else: txtTime = f"_obs={int(time)}"
 
-		priors_sum = theta0*vocabulary_size  # ATTENTION SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
-		log_prob = 0
+	with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "w+") as f:
+		pickle.dump(DHP_copy, f)
 
-		cnt = np.bincount(cls_word_distribution)
-		un = np.arange(len(cnt))
-
-		log_prob += gammaln(priors_sum)
-		log_prob += gammaln(cls_word_count+1)
-		log_prob += gammaln(un + theta0).dot(cnt)  # ATTENTION SEULEMENT SI THETA0 EST SYMMETRIQUE !!!!
-
-		log_prob -= gammaln(cls_word_count + priors_sum)
-		log_prob -= vocabulary_size*gammaln(theta0)
-		log_prob -= gammaln(cls_word_count+1)
-
-		return log_prob
-
-	import sys
-	import inspect
-
-	def get_size(obj, seen=None):
-		"""Recursively finds size of objects in bytes"""
-		size = sys.getsizeof(obj)
-		if seen is None:
-			seen = set()
-		obj_id = id(obj)
-		if obj_id in seen:
-			return 0
-
-		# Important mark as seen *before* entering recursion to gracefully handle
-		# self-referential objects
-		seen.add(obj_id)
-		if hasattr(obj, '__dict__'):
-			for cls in obj.__class__.__mro__:
-				if '__dict__' in cls.__dict__:
-					d = cls.__dict__['__dict__']
-					if inspect.isgetsetdescriptor(d) or inspect.ismemberdescriptor(d):
-						size += get_size(obj.__dict__, seen)
-					break
-		if isinstance(obj, dict):
-			size += sum((get_size(v, seen) for v in obj.values()))
-			size += sum((get_size(k, seen) for k in obj.keys()))
-		elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
-			size += sum((get_size(i, seen) for i in obj))
-
-		if hasattr(obj, '__slots__'): # can have __slots__ with __dict__
-			size += sum(get_size(getattr(obj, s), seen) for s in obj.__slots__ if hasattr(obj, s))
-
-		return size
-
-	try:
-		print("particles", get_size(DHP.particles[0])/1000**2, sep="\t")
-		print("clusters", get_size(DHP.particles[0].clusters)/1000**2, sep="\t")
-		print()
-		for c in DHP.particles[0].clusters:
-			print(f"{c} cluster", get_size(DHP.particles[0].clusters[c])/1000**2, sep="\t")
-			print(f"{c} alpha", get_size(DHP.particles[0].clusters[c].alpha)/1000**2, sep="\t")
-			print(f"{c} alpha_final", get_size(DHP.particles[0].clusters[c].alpha_final)/1000**2, sep="\t")
-			print(f"{c} word_distribution", get_size(DHP.particles[0].clusters[c].word_distribution)/1000**2, sep="\t")
-			print(f"{c} word_count", get_size(DHP.particles[0].clusters[c].word_count)/1000**2, sep="\t")
-			try:
-				print(f"{c} alphas", get_size(DHP.particles[0].clusters[c].alphas)/1000**2, sep="\t")
-				print(f"{c} log_priors", get_size(DHP.particles[0].clusters[c].log_priors)/1000**2, sep="\t")
-				print(f"{c} likelihood_samples", get_size(DHP.particles[0].clusters[c].likelihood_samples)/1000**2, sep="\t")
-				print(f"{c} likelihood_samples_sansLambda", get_size(DHP.particles[0].clusters[c].likelihood_samples_sansLambda)/1000**2, sep="\t")
-				print(f"{c} triggers", get_size(DHP.particles[0].clusters[c].triggers)/1000**2, sep="\t")
-				print(f"{c} integ_triggers", get_size(DHP.particles[0].clusters[c].integ_triggers)/1000**2, sep="\t")
-			except:
-				pass
-			print()
-		print()
-	except Exception as e:
-		print(e)
-		pass
-
-
-	with open(folderOut+nameOut+"_particles.txt", "w+") as f:
-		for pIter, p in enumerate(DHP.particles):
-			f.write(f"Particle\t{pIter}\t{p.weight}\t{p.docs2cluster_ID}\n")
-			for c in p.clusters:
-				likTxt = getLikTxt(p.clusters[c], theta0 = DHP.theta0[0])
-				f.write(f"Cluster\t{c}\t{DHP.alpha0}\t{p.clusters[c].alpha}\t{likTxt}\t{p.clusters[c].word_count}\t[")
-				V = len(p.clusters[c].word_distribution)
-				for iwdd, wdd in enumerate(p.clusters[c].word_distribution):
-					f.write(str(wdd))
-					if iwdd != V:
-						f.write(" ")
-					else:
-						f.write("]")
-				f.write("\n")
-
-def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, alpha_true=None):
+def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, alpha_true=None):
 	"""
 	observations = ([array int] index_obs, [array float] timestamp, ([array int] unique_words, [array int] count_words), [opt, int] temporal_cluster, [opt, int] textual_cluster)
 	folderOut = Output folder for the results
@@ -558,7 +488,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 	DHP = Dirichlet_Hawkes_Process(particle_num = particle_num, base_intensity = base_intensity, theta0 = theta0,
 								   alpha0 = alpha0, reference_time = reference_time, vocabulary_size = vocabulary_size,
-								   bandwidth = bandwidth, sample_num = sample_num, r=r)
+								   bandwidth = bandwidth, sample_num = sample_num, r=r, multivariate=multivariate)
 
 	t = time.time()
 
@@ -572,12 +502,17 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		trueClus.append(int(float(news_item[-1][0])))
 
 		if (i%100==1 and printRes) or (i>0 and False):
-			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
+			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - '
+				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
 			inferredClus = DHP.particles[0].docs2cluster_ID
 			print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
+
+			keys = list(DHP.particles[0].clusters.keys())
+			for c in keys:
+				print(c, DHP.particles[0].clusters[c].alpha_final)
 
 			# On n'évalue pas les fonctions d'intensité : problèmes d'échangeabilité,
 			# et un même Hawkes peut être dissocié en deux dynamiques complémentaires
@@ -607,10 +542,10 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
 				print("ERR", (err/(div+1e-20))**(1./exponent))
 
-		if i%1000==1:
-			saveDHP(DHP, folderOut, nameOut)
+		if i%5000==1:
+			saveDHP(DHP, folderOut, nameOut, time=i)
 
-	saveDHP(DHP, folderOut, nameOut)
+	saveDHP(DHP, folderOut, nameOut, time=-1)
 
 
 if __name__ == '__main__':
@@ -618,7 +553,7 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 200
+		run_time = 1000
 		XP = "Overlap"
 
 		overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
@@ -628,7 +563,7 @@ if __name__ == '__main__':
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
 		words_per_obs = 10
 
-		run = 0
+		DS = 0
 
 		lamb0 = 0.1  # Cannot be inferred
 		theta0 = 10.  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
@@ -637,17 +572,19 @@ if __name__ == '__main__':
 		sigs = np.array([0.5, 0.5, 0.5])
 
 		folder = "data/Synth/"
-		nameData = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
+		nameData = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
+				   f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
 		dataFile = folder+nameData+"_events.txt"
 		outputFolder = folder.replace("data/", "output/")
 		alpha_true = np.load(folder+nameData+"_alpha.npy")
 
 		ensureFolder(outputFolder)
 
-		arrR = [0.]
+		arrR = [2.]
 		nbRuns = 1
 		sample_num = 2000
 		particle_num = 8
+		multivariate = False
 		printRes = True
 
 
@@ -660,13 +597,15 @@ if __name__ == '__main__':
 
 	for run in range(nbRuns):
 		for r in arrR:
-			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}_theta0={theta0}_alpha0={alpha0}_samplenum={sample_num}_particlenum={particle_num}_run_{run}"
+			name = f"{dataFile[dataFile.rfind('/'):].replace('_events.txt', '')}_r={r}" \
+				   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0}" \
+				   f"_samplenum={sample_num}_particlenum={particle_num}_run={run}"
 
 			# import pprofile
 			# profiler = pprofile.Profile()
 			# with profiler:
 
-			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, alpha_true=alpha_true)
+			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, multivariate=multivariate, alpha_true=alpha_true)
 
 			# profiler.print_stats()
 			# profiler.dump_stats("Benchmark.txt")
