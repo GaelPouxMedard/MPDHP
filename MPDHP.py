@@ -20,7 +20,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.reference_time = reference_time
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
-		self.horizon = (np.max(self.reference_time)+3*np.max(self.bandwidth))*2
+		self.horizon = (np.max(self.reference_time)+10*np.max(self.bandwidth))
 		self.sample_num = sample_num
 		self.particles = []
 		for i in range(particle_num):
@@ -76,13 +76,16 @@ class Dirichlet_Hawkes_Process(object):
 			particle = self.update_active_clusters(particle)
 
 			# Posterior probability for each cluster
-			timeseq = doc.timestamp - particle.active_timestamps[:, 1]
-			RBF = RBF_kernel(self.reference_time, timeseq, self.bandwidth)  # num_time_points, size_kernel
-			unweighted_triggering_kernel = np.zeros((len(particle.active_clusters), len(self.reference_time)))
+			timeseq = doc.timestamp - particle.active_timestamps[particle.active_timestamps[:, 1]<doc.timestamp, 1]
 			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(list(set(particle.active_timestamps[:, 0]))))}
-			for (clus, trig) in zip(particle.active_timestamps[:, 0], RBF):
-				indclus = particle.active_clus_to_ind[int(clus)]
-				unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
+			if len(timeseq)==0:
+				unweighted_triggering_kernel=0
+			else:
+				RBF = RBF_kernel(self.reference_time, timeseq, self.bandwidth)  # num_time_points, size_kernel
+				unweighted_triggering_kernel = np.zeros((len(particle.active_clusters), len(self.reference_time)))
+				for (clus, trig) in zip(particle.active_timestamps[:, 0], RBF):
+					indclus = particle.active_clus_to_ind[int(clus)]
+					unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
 			for active_cluster_index in particle.active_clusters:
 				active_cluster_indexes.append(active_cluster_index)
@@ -113,7 +116,9 @@ class Dirichlet_Hawkes_Process(object):
 			# # Random cluster selection
 			# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
 			# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
+
 			selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
+
 
 			# New cluster drawn
 			if selected_cluster_index == 0:
@@ -135,7 +140,10 @@ class Dirichlet_Hawkes_Process(object):
 				particle.docs2cluster_ID.append(selected_cluster_index)
 				particle.active_clusters[selected_cluster_index].append(doc.timestamp)
 
+			# Initialized in if==0
 			particle.active_timestamps = np.vstack((particle.active_timestamps, [selected_cluster_index, doc.timestamp]))
+
+		particle.all_timestamps.append(doc.timestamp)
 
 		return particle, selected_cluster_index
 
@@ -154,19 +162,20 @@ class Dirichlet_Hawkes_Process(object):
 		return particle.clusters
 
 	def parameter_estimation(self, particle, selected_cluster_index):
-		timeseq = np.array(particle.active_clusters[selected_cluster_index])
 
 		# Observation is alone in the cluster => the cluster is new => random initialization of alpha
 		# Note that it cannot be a previously filled cluster since it would have 0 chance to get selected (see sampling_cluster_label)
-		if len(timeseq)==1:
-			alpha = draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
-			return alpha
+		# if particle.clusters[selected_cluster_index].alpha is None:
+		# 	alpha = draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
+		# 	return alpha
 
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
-		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index], alpha_true)
+		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index], alpha_true, particle, self)
 		for clus in particle.active_clusters:
-			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
+			if particle.active_clus_to_ind is None: continue
+			if clus in particle.active_clus_to_ind:  # Otherwise it's a new cluster
+				particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
 		return alpha
 
 	def update_active_clusters(self, particle):
@@ -470,7 +479,10 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 			inferredClus = DHP.particles[0].docs2cluster_ID
 			print("NMI", NMI(trueClus, inferredClus))
 
-			if alpha_true is not None:
+			# On n'évalue pas les fonctions d'intensité : problèmes d'échangeabilité,
+			# et un même Hawkes peut être dissocié en deux dynamiques complémentaires
+
+			if alpha_true is not None and False:
 				trueClus = np.array(trueClus)
 				inferredClus = np.array(inferredClus)
 				infToTrue = {}
@@ -492,7 +504,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 						if c2 not in DHP.particles[0].active_clusters: continue
 						if c not in DHP.particles[0].active_clusters: continue
-						print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
+						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
 				print("ERR", (err/(div+1e-20))**(1./exponent))
 
 		if i%1000==1:
@@ -522,7 +534,7 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 400
+		run_time = 5000
 		XP = "Overlap"
 
 		overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
@@ -530,13 +542,13 @@ if __name__ == '__main__':
 
 		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
-		words_per_obs = 20
+		words_per_obs = 10
 
 		run = 0
 
-		lamb0 = 1.  # Cannot be inferred
+		lamb0 = 0.01  # Cannot be inferred
 		theta0 = 1  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
-		alpha0 = 0.1  # Uniform beta or Dirichlet prior
+		alpha0 = 1.  # Uniform beta or Dirichlet prior
 		means = np.array([3, 7, 11])
 		sigs = np.array([0.5, 0.5, 0.5])
 
@@ -548,10 +560,10 @@ if __name__ == '__main__':
 
 		ensureFolder(outputFolder)
 
-		arrR = [0.]
+		arrR = [1.]
 		nbRuns = 1
 		sample_num = 20000
-		particle_num = 8
+		particle_num = 1
 		printRes = True
 
 

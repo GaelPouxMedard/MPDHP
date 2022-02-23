@@ -24,7 +24,7 @@ class Cluster(object):
 		self.likelihood_samples = np.zeros((num_samples), dtype=np.float)
 		self.likelihood_samples_sansLambda = np.zeros((num_samples), dtype=np.float)
 		self.triggers = np.zeros((num_samples), dtype=np.float)
-		self.integ_triggers = np.ones((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
+		self.integ_triggers = np.zeros((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
 		vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True)
 		self.alphas = vectors
@@ -47,9 +47,10 @@ class Particle(object):
 		super(Particle, self).__init__()
 		self.weight = weight
 		self.log_update_prob = 0
-		self.clusters = {} # can be store in the process for efficient memory implementation, key = cluster_index, value = cluster object
-		self.docs2cluster_ID = [] # the element is the cluster index of a sequence of document ordered by the index of document
-		self.active_clusters = {} # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
+		self.clusters = {}  # can be store in the process for efficient memory implementation, key = cluster_index, value = cluster object
+		self.docs2cluster_ID = []  # the element is the cluster index of a sequence of document ordered by the index of document
+		self.all_timestamps = []  # the element is the cluster index of a sequence of document ordered by the index of document
+		self.active_clusters = {}  # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
 		self.active_timestamps = None
 		self.cluster_num_by_now = 0
 		self.active_clus_to_ind = None
@@ -89,7 +90,7 @@ def dirichlet(prior, num_samples, active_clusters, size_kernel):
 def beta(alpha0, num_samples, active_clusters, size_kernel):
 	''' Draw 1-D samples from a dirichlet distribution
 	'''
-	skew = 10
+	skew = 1
 	draws = np.random.beta(alpha0, skew*alpha0, size=(num_samples, len(active_clusters), size_kernel))
 	if num_samples==1:
 		draws=draws[0]
@@ -136,7 +137,7 @@ def log_beta_prior(alpha, alpha0):
 	''' return the logpdf for each entry of a list of dirichlet draws
 	'''
 
-	skew = 10
+	skew = 1
 	priors = np.log(alpha)*(alpha0-1) + np.log(1-alpha)*(skew*alpha0-1) + gammaln(alpha0+skew*alpha0) - gammaln(alpha0) - gammaln(skew*alpha0)
 
 	lg = priors.shape[-1]
@@ -234,23 +235,27 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 	alphas_times_gtheta = np.sum(alphas * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
 
 
-	time_intervals = timeseq[-1] - timeseq[:-1]
+	time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
+	if len(time_intervals)!=0:
+		RBF = RBF_kernel(reference_time, time_intervals, bandwidth)  # num_time_points, size_kernel
+		unweighted_triggering_kernel = np.zeros((num_active_clus, len(reference_time)))
+		indToClus = {int(c): i for i,c in enumerate(sorted(list(set(clusseq))))}
+		for (clus, trig) in zip(clusseq, RBF):
+			indclus = indToClus[int(clus)]
+			unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
-	RBF = RBF_kernel(reference_time, time_intervals, bandwidth)  # num_time_points, size_kernel
-	unweighted_triggering_kernel = np.zeros((num_active_clus, len(reference_time)))
-	indToClus = {int(c): i for i,c in enumerate(sorted(list(set(clusseq))))}
-	for (clus, trig) in zip(clusseq, RBF):
-		indclus = indToClus[int(clus)]
-		unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
-	cluster.triggers = np.sum(alphas*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
 
-	cluster.integ_triggers = cluster.integ_triggers + alphas_times_gtheta
-	cluster.likelihood_samples_sansLambda = cluster.likelihood_samples_sansLambda + np.log(cluster.triggers+1e-100)
+		cluster.triggers = np.sum(alphas*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
+
+		cluster.likelihood_samples_sansLambda += np.log(cluster.triggers)
+
+	cluster.integ_triggers += alphas_times_gtheta
+
 	cluster.likelihood_samples = -Lambda_0 - cluster.integ_triggers + cluster.likelihood_samples_sansLambda
 
 	return cluster
 
-def update_triggering_kernel_optim(cluster, alpha_true=None):
+def update_triggering_kernel_optim(cluster, alpha_true=None, particle = None, DirProc=None):
 	''' procedure of triggering kernel for SMC
 		@param:
 			1. timeseq: list, time sequence including current time
@@ -280,11 +285,64 @@ def update_triggering_kernel_optim(cluster, alpha_true=None):
 	#alpha = np.sum(update_weight * alphas, axis = 0)
 	alpha = np.tensordot(update_weight, alphas, axes=1)
 
-	print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
-	print(np.max(update_weight), np.min(update_weight), np.mean(update_weight))#, update_weight)
-	print(alpha_true)
-	print(alphas[np.where(logLikelihood==np.max(logLikelihood))[0]])#, alpha)
-	print()
+	if len(particle.active_clusters)==2 and False:
+		#alpha_true = alphas[0]
+		events = list(zip(particle.docs2cluster_ID, particle.all_timestamps))
+		events = np.array(events)
+		loglik = 0
+		T=0
+		#print(particle.docs2cluster_ID)
+		triggerstot= 0.
+		for c,t in events:
+			c = c-1
+			c = int(c)
+			T = t + DirProc.horizon
+			tu = EfficientImplementation(t, DirProc.reference_time, DirProc.bandwidth, epsilon=1e-10)
+			events_cons = events[events[:, 1]>tu]
+			events_cons = events_cons[events_cons[:, 1] <= t]
+			#events_cons = np.array([e for e in events_cons if e[0] in particle.active_clusters])
+			if len(events_cons)==0: continue
+
+			clusters_timestamps = events_cons[:, 0]
+			timestamps = events_cons[:, 1]
+			time_intervals = t - timestamps[timestamps<t]
+
+			integ_RBF = g_theta(np.array([t]), DirProc.reference_time, DirProc.bandwidth, T)
+			unweighted_integ_triggering_kernel = np.zeros((len(alpha), len(DirProc.reference_time)))
+			indToClus = {int(ci): i for i,ci in enumerate(sorted(list(set(clusters_timestamps))))}
+			for (clus, integ_trig) in zip(clusters_timestamps, integ_RBF):
+				indclus = indToClus[int(clus)]
+				unweighted_integ_triggering_kernel[indclus] = unweighted_integ_triggering_kernel[indclus] + integ_trig
+
+			integ_trigger = np.sum(alpha_true[c] * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
+
+			loglik -= integ_trigger
+
+			triggers = 0.
+			if len(time_intervals)!=0:
+				RBF = RBF_kernel(DirProc.reference_time, time_intervals, DirProc.bandwidth)  # num_time_points, size_kernel
+				unweighted_triggering_kernel = np.zeros((len(alpha), len(DirProc.reference_time)))
+				active_clus_to_ind = {int(ci): i for i,ci in enumerate(sorted(list(set(clusters_timestamps))))}
+				for (clus, trig) in zip(clusters_timestamps, RBF):
+					indclus = active_clus_to_ind[int(clus)]
+					unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
+
+				triggers = np.sum(alpha_true[c]*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
+
+				triggerstot += np.log(triggers)
+				loglik += np.log(triggers)
+
+
+
+		loglik -= DirProc.base_intensity * T
+
+		# print(loglik, np.max(logLikelihood))
+	# print(np.max(logLikelihood), np.min(logLikelihood), np.mean(logLikelihood))
+	# print(np.max(update_weight), np.min(update_weight), np.mean(update_weight))#, update_weight)
+	# print(alpha_true)
+	# print(alpha)
+	# print(alphas[np.where(logLikelihood==np.max(logLikelihood))[0]])#, alpha)
+	# print()
 
 
 	return alpha

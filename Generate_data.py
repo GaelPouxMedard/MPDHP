@@ -184,32 +184,55 @@ def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
     np.savetxt(folder+name+"_sigs.txt", sigs)
     np.save(folder+name+"_alpha", alpha)
 
-def plotProcess(events, means, sigs, alpha, whichclus=0):
+def RBF_kernel(reference_time, time_interval, bandwidth):
+    ''' RBF kernel for Hawkes process.
+        @param:
+            1.reference_time: np.array, entries larger than 0.
+            2.time_interval: float/np.array, entry must be the same.
+            3. bandwidth: np.array, entries larger than 0.
+        @rtype: np.array
+    '''
+    numerator = - (time_interval[:, None] - reference_time[None, :]) ** 2 / (2 * bandwidth[None, :] ** 2)
+    denominator = (2 * np.pi * bandwidth[None, :] ** 2 ) ** 0.5
+    return np.exp(numerator) / denominator
+
+def plotProcess(events, means, sigs, alpha):
     colors = ["r", "b", "y", "g", "orange", "cyan","purple"]*10
+
     maxdt = max(means)+3*max(sigs)
     nbClasses = len(alpha)
-    rangedt = np.linspace(0, maxdt, 100)
-    for e in events:
-        c = int(e[whichclus])
-        t = e[-1]
-        #plt.plot(t, -1/10-c/10, "o", c=colors[c], markersize=4)
-        #plt.plot(t+rangedt, kernel(rangedt, means, sigs, alpha[c]), colors[c], alpha=0.1)
 
-    ranget = np.linspace(0, np.max(events[:, -1]), 10000)
+    res = 1000
+    ranget = np.linspace(0, np.max(events[:, 1]), res)
     tabvals = [[] for _ in range(nbClasses)]
     for t in ranget:
-        ev = events[events[:, -1]>t-maxdt]
-        ev = ev[ev[:, -1]<t]
+        events_cons = events[events[:, 1]>t-maxdt]
+        events_cons = events_cons[events_cons[:, 1] < t]
+
+
+        clusters_timestamps = events_cons[:, 0]
+        timestamps = events_cons[:, 1]
+
+        plt.plot(timestamps, [0]*len(timestamps), "ok", markersize=0.1)
+
+        RBF = RBF_kernel(means, t-timestamps, sigs)  # num_time_points, size_kernel
+        unweighted_triggering_kernel = np.zeros((len(alpha), len(means)))
+        active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(list(set(clusters_timestamps))))}
+        for (clus, trig) in zip(clusters_timestamps, RBF):
+            indclus = active_clus_to_ind[int(clus)]
+            unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
+
+
         for c in range(nbClasses):
-            eventsprec = ev[ev[:, 0] == c]  # 0 bc has to be temporal clusters
-            val = kernel(t - eventsprec[:, -1], means, sigs, alpha[c,c]).sum()
+            val = np.sum(alpha[c]*unweighted_triggering_kernel)
+
+            # eventsprec = ev[ev[:, 0] == c]  # 0 bc has to be temporal clusters
+            # val = kernel(t - eventsprec[:, -1], means, sigs, alpha[c,c]).sum()
             tabvals[c].append(val)
     tabvals = np.array(tabvals)
 
     for c in range(nbClasses):
         plt.plot(ranget, lamb0+tabvals[c], "-", c=colors[c])
-
-    plt.show()
 
 
 
@@ -234,6 +257,10 @@ def generate(params):
             filled.append((c2, k))
             alpha[c,c2,k] = toShare[i]
 
+    # alpha = np.zeros((nbClasses, nbClasses, len(means)))
+    # for c in range(nbClasses):
+    #     alpha[c, c] = np.random.dirichlet([alpha0]*len(means))
+
     # skew = nbClasses*2
     # alpha = np.random.beta(alpha0, skew*alpha0, size=(nbClasses, nbClasses, len(means)))
 
@@ -242,12 +269,20 @@ def generate(params):
     # Get timestamps and temporal clusters
     events, hawkes = simulHawkes(lamb0, alpha, means, sigs, run_time=run_time)
     print(len(events), "events")
-    dofit = False
-    if dofit:
-        em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
-        em.fit(hawkes.timestamps)
-        fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
+    visualize = True
+    if visualize:
+        plotProcess(events, means, sigs, alpha)
         plt.show()
+
+        fit = False
+        if fit:
+            em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
+            em.fit(hawkes.timestamps)
+            fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
+            plt.show()
+
+        #sys.exit()
+
 
     if overlap_temp is not None:
         # Get the wanted temporal overlap
@@ -263,16 +298,12 @@ def generate(params):
     # Generate text associated with textual clusters
     arrtxt = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
-    # Plot the process (univariate only e.g. diagonal of alpha)
-    # print(len(events))
-    # plotProcess(events, means, sigs, alpha, whichclus=1)
-    # sys.exit()
 
     name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_run={run}"
     save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
 
 nbClasses = 2
-run_time = 400
+run_time = 5000
 XP = "Overlap"
 
 overlap_voc = 0.0  # Proportion of voc in common between a clusters and its direct neighbours
@@ -280,13 +311,13 @@ overlap_temp = None  # Overlap between the kernels of the simulating process
 
 voc_per_class = 1000  # Number of words available for each cluster
 perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 20
+words_per_obs = 10
 
 means = np.array([3, 7, 11])
 sigs = np.array([0.5, 0.5, 0.5])
 
 
-lamb0 = 1.
+lamb0 = 0.05
 theta0 = 1.
 alpha0 = 1
 
