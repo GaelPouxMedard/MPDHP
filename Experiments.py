@@ -148,7 +148,7 @@ if RW=="0":
         folder += "XP2/"
         output_folder += "XP2/"
 
-        arrNbClasses = list(range(1, 10))
+        arrNbClasses = list(range(2, 10))
         arrLambPoisson = np.logspace(-4, 1, 11)
 
         t = time.time()

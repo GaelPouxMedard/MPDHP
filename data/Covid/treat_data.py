@@ -54,8 +54,8 @@ def treatAll():
                         text = re.sub(r' +', ',', text)
 
                         if timestamp<prevts:
-                            continue  # Only 116 errors over like 1.3 million
                             numErr += 1
+                            continue  # Only 116 errors over like 1.3 million
                             print("================", numErr)
                         else:
                             prevts = timestamp
