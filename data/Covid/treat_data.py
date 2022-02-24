@@ -33,6 +33,7 @@ def treatAll():
         output = open(f"./{folder.replace('Tweets-treated-wo-retweets', 'events')}.txt", "w+", encoding="utf-8")
         for month in os.listdir(f"./{folder}/"):
             for file in os.listdir(f"./{folder}/{month}/"):
+                print(folder, month, file)
                 with gzip.open(f"./{folder}/{month}/{file}", 'r') as f:
                     for line in f:
                         d = json.loads(line)
@@ -57,7 +58,7 @@ def treatAll():
                         numTweets += 1
                         setWords|=set(text.split(","))
 
-                print(folder, month, file, numTweets, len(setWords))
+                print(numTweets, len(setWords))
 
             #     if numTweets>2000: break
             # if numTweets>2000: break
