@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy as copy
 
 from tick.hawkes import (SimuHawkes, HawkesKernelTimeFunc, HawkesKernelExp, HawkesEM)
+from tick.hawkes import SimuPoissonProcess
 from tick.base import TimeFunction
 from tick.plot import plot_hawkes_kernels
 import sys
@@ -10,7 +11,7 @@ import os
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['font.family'] = 'Calibri'
 
-seed = 1111
+seed = 111126
 np.random.seed(seed)
 
 
@@ -28,7 +29,7 @@ def kernel(dt, means, sigs, alpha):
     k = gaussian(dt[:, None], means[None, :], sigs[None, :]).dot(alpha)
     return k
 
-def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
+def simulHawkes(lamb0_poisson, lamb0_classes, alpha, means, sigs, num_obs=1000):
     maxdt = max(means)+3*max(sigs)
     nbClasses = len(alpha)
     # Definition kernels
@@ -45,12 +46,26 @@ def simulHawkes(lamb0, alpha, means, sigs, run_time=1000):
             #plt.show()
 
             tf = TimeFunction((t_values, y_values), inter_mode=TimeFunction.InterConstRight, dt=maxdt/100)
-            #kernels.append(HawkesKernelTimeFunc(tf))
             kernels[c][c2] = HawkesKernelTimeFunc(tf)
 
-    baseline = np.array([lamb0 for _ in range(nbClasses)])
 
-    hawkes = SimuHawkes(force_simulation=False, baseline=baseline, end_time=run_time, verbose=False, seed=int(np.random.random()*10000))
+    # poisson = SimuPoissonProcess(lamb0_poisson, max_jumps=nbClasses-1, seed=seed)  # nbClasses-1 bc we begin at 0
+    # poisson.simulate()
+    # underlying_poisson = [0]+poisson.timestamps
+    # print(underlying_poisson)
+    # t_values = np.linspace(0, run_time, 1000)
+    # intensity_functions = []
+    # for t_start in underlying_poisson:
+    #     bg = np.ones((len(t_values)))*lamb0_classes
+    #     bg[t_values<t_start] = -1e20
+    #     tf = TimeFunction((t_values, bg), inter_mode=TimeFunction.InterConstRight)
+    #     intensity_functions.append(tf)
+    # baseline = intensity_functions
+    baseline = [lamb0_classes for _ in range(nbClasses)]
+
+
+    hawkes = SimuHawkes(force_simulation=True, baseline=baseline, max_jumps=num_obs, verbose=False, seed=seed+5)
+    hawkes.threshold_negative_intensity()
 
     for c in range(nbClasses):
         for c2 in range(nbClasses):
@@ -114,30 +129,6 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
 
     return arrtxt
 
-def compute_kernel_alltimes(events, means, sigs, alpha, res=1000):
-    ranget = np.linspace(0, np.max(events[:, -1]), res)
-    tabvals = [[] for _ in range(nbClasses)]
-    maxdt = max(means)+3*max(sigs)
-    for t in ranget:
-        ev = events[events[:, -1]>t-maxdt]
-        ev = ev[ev[:, -1]<t]
-        for c in range(nbClasses):
-            eventsprec = ev[ev[:, 0] == c]  # 0 bc has to be temporal clusters
-            val = kernel(t - eventsprec[:, -1], means, sigs, alpha[c,c]).sum()
-            tabvals[c].append(val)
-    tabvals = np.array(tabvals)
-
-    return ranget, tabvals[0], tabvals[1]
-
-def compute_overlap_temp(x, y1, y2):
-    area1 = np.trapz(y1, x=x)
-    area2 = np.trapz(y2, x=x)
-    areaInter = np.trapz(np.min([y1,y2], axis=0), x=x)
-
-    overlap = 2*areaInter/(area1+area2)
-
-    return overlap
-
 def compute_overlap(x, ys):
     areas = [np.trapz(y, x=x) for y in ys]
     ys = np.array(ys)
@@ -146,33 +137,12 @@ def compute_overlap(x, ys):
     ysecondmin = np.max(ysecondmin, axis=0)
     areaInter = np.trapz(ysecondmin, x=x)
 
-    overlap = len(areas)*areaInter/np.sum(areas)
+    #len(areas)*
+    overlap = 2*areaInter/np.sum(areas)
 
     return overlap
 
-def make_overlap_temp(events, alpha, overlap_temp, params_resimul):
-    ol_temp = -1000
-    eps = 0.05
-    dt = 10
-    res = 1000
-    while not (ol_temp>overlap_temp-eps and ol_temp<overlap_temp+eps):
-        maxt = np.max(events[:, -1])
-        i=0
-        while not (ol_temp>overlap_temp-eps and ol_temp<overlap_temp+eps) and nbClasses == 2 and i*dt<maxt:
-            events[events[:, 0]==0, 1] += dt
-            t, kernel1, kernel2 = compute_kernel_alltimes(events, means, sigs, alpha, res=res)
-            ol_temp = compute_overlap_temp(t, kernel1, kernel2)
-            i+=1
-            #print(i*dt, ol_temp, maxt)
-            if ol_temp<overlap_temp:
-                break
-
-        if not (ol_temp>overlap_temp-eps and ol_temp<overlap_temp+eps):
-            events, hawkes = simulHawkes(*params_resimul)
-
-    return events
-
-def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
+def save(folder, name, events, arrtxt, lamb0_poisson, lamb0_classes, means, sigs, alpha):
     ensureFolder(folder)
     events = np.insert(events, 3, np.array(list(range(len(events)))), axis=1)  # Index to identify textual content
     events = np.array(list(sorted(events, key= lambda x: x[2])))  # Sort by time
@@ -183,7 +153,7 @@ def save(folder, name, events, arrtxt, lamb0, means, sigs, alpha):
             f.write(txt)
 
     with open(folder+name+"_lamb0.txt", "w+") as f:
-        f.write(str(lamb0))
+        f.write(str(lamb0_poisson)+"\t"+str(lamb0_classes))
     np.savetxt(folder+name+"_means.txt", means)
     np.savetxt(folder+name+"_sigs.txt", sigs)
     np.save(folder+name+"_alpha", alpha)
@@ -200,7 +170,7 @@ def RBF_kernel(reference_time, time_interval, bandwidth):
     denominator = (2 * np.pi * bandwidth[None, :] ** 2 ) ** 0.5
     return np.exp(numerator) / denominator
 
-def plotProcess(events, means, sigs, alpha):
+def plotProcess(events, means, sigs, alpha, lamb0):
     colors = ["r", "b", "y", "g", "orange", "cyan","purple"]*10
 
     maxdt = max(means)+3*max(sigs)
@@ -217,7 +187,6 @@ def plotProcess(events, means, sigs, alpha):
         clusters_timestamps = events_cons[:, 0]
         timestamps = events_cons[:, 1]
 
-        plt.plot(timestamps, [0]*len(timestamps), "ok", markersize=0.1)
 
         RBF = RBF_kernel(means, t-timestamps, sigs)  # num_time_points, size_kernel
         unweighted_triggering_kernel = np.zeros((len(alpha), len(means)))
@@ -238,47 +207,69 @@ def plotProcess(events, means, sigs, alpha):
     for c in range(nbClasses):
         plt.plot(ranget, lamb0+tabvals[c], "-", c=colors[c])
 
+    all_timestamps = events[:, 1]
+    all_clus = events[:, 0]
+    colors_dots = [colors[int(clus)] for clus in all_clus]
+    plt.scatter(all_timestamps, [0]*len(all_timestamps), c=colors_dots, s=1)
+
 
 
 def generate(params):
-    nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder = params
-    alpha = np.zeros((nbClasses, nbClasses, len(means)))
-    for c in range(nbClasses):
-        a = np.random.dirichlet([alpha0]*nbClasses*len(means))
-        a = a.reshape((nbClasses, len(means)))
-        alpha[c]=a
-    alpha = np.array(alpha)
+    (folder, DS, nbClasses, num_obs, multivariate,
+     overlap_voc, overlap_temp, perc_rand,
+     voc_per_class, words_per_obs, theta0,
+     lamb0_poisson, lamb0_classes, alpha0, means, sigs) = params
 
-    # alpha = np.zeros((nbClasses, nbClasses, len(means)))
-    # for c in range(nbClasses):
-    #     toShare = np.random.dirichlet([alpha0]*nbClasses*2)
-    #     filled = [(-1, -1)]
-    #     for i in range(len(toShare)):
-    #         c2, k = -1, -1
-    #         while (c2,k) in filled:
-    #             c2 = np.random.randint(0, nbClasses)
-    #             k = np.random.randint(0, len(means))
-    #         filled.append((c2, k))
-    #         alpha[c,c2,k] = toShare[i]
+    nbTries = 0
+    while True:
+        alpha = np.zeros((nbClasses, nbClasses, len(means)))
+        for c in range(nbClasses):
+            a = np.random.dirichlet([alpha0]*nbClasses*len(means))
+            a = a.reshape((nbClasses, len(means)))
+            alpha[c]=a
+        alpha = np.array(alpha)
 
-    # alpha = np.zeros((nbClasses, nbClasses, len(means)))
-    # for c in range(nbClasses):
-    #     alpha[c, c] = np.random.dirichlet([alpha0]*len(means))
+        if not multivariate:
+            for i in range(len(alpha)):
+                for j in range(len(alpha[i])):
+                    if i==j: continue
+                    else: alpha[i,j]*=0
 
-    # skew = nbClasses*2
-    # alpha = np.random.beta(alpha0, skew*alpha0, size=(nbClasses, nbClasses, len(means)))
+        alpha = alpha/(alpha.sum(axis=(-1,-2))[:, None, None]+1e-20)
 
-    print(alpha)
+        if overlap_temp is None:
+            break
+
+        t = np.linspace(0, np.max(means)+6*np.max(sigs), 1000)
+        RBF = RBF_kernel(means, t, sigs)
+        kernels = []
+        for i in range(len(alpha)):
+            for j in range(len(alpha[i])):
+                kernels.append(RBF.dot(alpha[i,j]))
+        overlap_temp_temp = compute_overlap(t, kernels)
+        if overlap_temp_temp>overlap_temp-0.025 and overlap_temp_temp<overlap_temp+0.025:
+            print("Overlap temporel", overlap_temp)
+            break
+        nbTries += 1
+        if nbTries>100:
+            print(f"Overlap temp = {overlap_temp} too hard to compute")
+            return -1
+
+    #print(alpha)
+
+
 
     # Get timestamps and temporal clusters
-    events, hawkes = simulHawkes(lamb0, alpha, means, sigs, run_time=run_time)
+    events, hawkes = simulHawkes(lamb0_poisson, lamb0_classes, alpha, means, sigs, num_obs=num_obs)
     print(len(events), "events")
+    unique, cnt = np.unique(events[:, 0], return_counts=True)
+    print(list(cnt))
     visualize = False
     if visualize:
-        plotProcess(events, means, sigs, alpha)
+        plotProcess(events, means, sigs, alpha, lamb0_classes)
         plt.show()
 
-        fit = False
+        fit = True
         if fit:
             em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
             em.fit(hawkes.timestamps)
@@ -286,13 +277,6 @@ def generate(params):
             plt.show()
 
         #sys.exit()
-
-
-    if overlap_temp is not None:
-        # Get the wanted temporal overlap
-        if overlap_temp >=0 and nbClasses==2:
-            params_resimul=(lamb0, alpha, means, sigs, run_time)
-            events = make_overlap_temp(events, alpha, overlap_temp, params_resimul)
 
     # Initialize textual clusters and shuffle nb_rand of them
     events = np.insert(events, 0, events[:, 0], axis=1)  # Set textual cluster as identical to temporal ones
@@ -303,49 +287,45 @@ def generate(params):
     arrtxt = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
 
-    name = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
-    save(folder, name, events, arrtxt, lamb0, means, sigs, alpha)
+    name = f"Obs_nbclasses={nbClasses}_lg={num_obs}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
+    save(folder, name, events, arrtxt, lamb0_poisson, lamb0_classes, means, sigs, alpha)
 
-nbClasses = 2
-run_time = 3000
-XP = "Overlap"
-
-overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
-overlap_temp = None  # Overlap between the kernels of the simulating process
-
-voc_per_class = 1000  # Number of words available for each cluster
-perc_rand = 0.  # Percentage of events to which assign random textual cluster
-words_per_obs = 10
-
-means = np.array([3, 7, 11])
-sigs = np.array([0.5, 0.5, 0.5])
+    return 0
 
 
-lamb0 = 0.05
-theta0 = 10
-alpha0 = 1.
+if __name__ == "__main__":
+    nbClasses = 3
+    num_obs = 5000
 
-folder = "data/Synth/"
-np.random.seed(1564)
-#params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, means, sigs, folder)
-params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, 0, lamb0, theta0, alpha0, means, sigs, folder)
-generate(params)
-pause()
-nbRuns = 10
-if XP == "Decorr":
-    for perc_rand in np.array(list(range(11)))/10:
-        for DS in range(nbRuns):
-            params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder)
-            print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - DS={DS}")
-            generate(params)
-elif XP == "Overlap":
-    np.random.seed(14776)
-    for overlap_voc in [0., 0.3, 0.5, 0.7, 0.9]:
-        for overlap_temp in [0., 0.3, 0.5, 0.7]:
-            for DS in range(nbRuns):
-                params = (nbClasses, run_time, voc_per_class, overlap_voc, overlap_temp, voc_per_class, perc_rand, words_per_obs, DS, lamb0, theta0, alpha0, means, sigs, folder)
-                print(f"{nbClasses} classes - OL_text={overlap_voc} - OL_temp={overlap_temp} - perc_rand={perc_rand} - DS={DS}")
-                generate(params)
+    overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
+    overlap_temp = 0.05  # Overlap between the kernels of the simulating process
+
+    voc_per_class = 1000  # Number of words available for each cluster
+    perc_rand = 0.  # Percentage of events to which assign random textual cluster
+    words_per_obs = 10
+
+    means = np.array([3, 5, 7, 11, 13])
+    sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+
+
+    lamb0_poisson = 0.05
+    lamb0_classes = 0.1
+    theta0 = 10
+    alpha0 = 0.1
+
+    DS = 0
+
+    multivariate = True
+
+    folder = "data/Synth/"
+    np.random.seed(1564)
+    params = (folder, DS, nbClasses, num_obs, multivariate,
+              overlap_voc, overlap_temp, perc_rand,
+              voc_per_class, words_per_obs, theta0,
+              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+    generate(params)
+
+
 
 
 

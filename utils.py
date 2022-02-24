@@ -69,21 +69,26 @@ def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta
 	if method=="beta":
 		vec = beta(alpha0, num_samples, active_clusters, size_kernel)
 
+	vecPriors = vec
 	if not multivariate:
-		allOthers = list(range(vec.shape[1])).remove(index_cluster)
+		allOthers = list(range(vec.shape[1]))
+		allOthers.remove(index_cluster)
+
 		vec[:, allOthers] *= 0
+		vecPriors = vec[:, index_cluster]
 
 	vec[vec==0.] = 1e-10
 	vec[vec==1.] = 1-1e-10
 
+	if return_priors:
+		if method=="dirichlet":
+			prior = log_dirichlet_PDF(vecPriors, alpha0)
+		if method=="beta":
+			prior = log_beta_prior(vecPriors, alpha0)
+
 	if not return_priors:
 		return vec
-
 	else:
-		if method=="dirichlet":
-			prior = log_dirichlet_PDF(vec, alpha0)
-		if method=="beta":
-			prior = log_beta_prior(vec, alpha0)
 		return vec, prior
 
 def dirichlet(prior, num_samples, active_clusters, size_kernel):
@@ -260,7 +265,7 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 
 	return cluster
 
-def update_triggering_kernel_optim(cluster, alpha_true=None, particle = None, DirProc=None):
+def update_triggering_kernel_optim(cluster):
 	''' procedure of triggering kernel for SMC
 		@param:
 			1. timeseq: list, time sequence including current time

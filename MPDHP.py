@@ -61,7 +61,7 @@ class Dirichlet_Hawkes_Process(object):
 		particle, selected_cluster_index = self.sampling_cluster_label(particle, doc)
 		# Update the triggering kernel
 		particle.clusters[selected_cluster_index].alpha = self.parameter_estimation(particle, selected_cluster_index)
-		# Calculate the weight update probability
+		# Calculate the weight update probability ; + bc log form
 		particle.log_update_prob = self.calculate_particle_log_update_prob(particle, selected_cluster_index, doc)
 		return particle
 
@@ -85,7 +85,7 @@ class Dirichlet_Hawkes_Process(object):
 
 		else: # A new document arrives
 			active_cluster_indexes = [0] # Zero for new cluster
-			active_cluster_rates = [self.base_intensity**self.r]
+			active_cluster_rates = [self.base_intensity]
 			cls0_log_dirichlet_multinomial_distribution = log_dirichlet_multinomial_distribution(doc.word_distribution, doc.word_distribution,\
 			 doc.word_count, doc.word_count, self.vocabulary_size, self.theta0)
 			active_cluster_textual_probs = [cls0_log_dirichlet_multinomial_distribution]
@@ -147,7 +147,20 @@ class Dirichlet_Hawkes_Process(object):
 				# selected_cluster_array = multinomial(exp_num = 1, probabilities = cluster_selection_probs)
 				# selected_cluster_index = np.array(active_cluster_indexes)[np.nonzero(selected_cluster_array)][0]
 
-				selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
+				endo_exo_probs = [cluster_selection_probs[0], sum(cluster_selection_probs[1:])]
+				endo_exo = np.random.choice([0,1], p=endo_exo_probs)
+
+				# Answers the vanishing prior problem
+				selected_cluster_index = None
+				if endo_exo==0:
+					selected_cluster_index = 0
+				elif endo_exo==1:
+					lg = len(cluster_selection_probs[1:])
+					cluster_selection_probs = cluster_selection_probs[1:]/cluster_selection_probs[1:].dot(ones[lg])
+					active_cluster_indexes = active_cluster_indexes[1:]
+					selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)  # Categorical distribution
+
+				# selected_cluster_index = np.random.choice(active_cluster_indexes, p=cluster_selection_probs)
 
 			# New cluster drawn
 			if selected_cluster_index == 0:
@@ -184,10 +197,11 @@ class Dirichlet_Hawkes_Process(object):
 		for cluster_index in particle.active_clusters:
 			if particle.clusters[cluster_index].alphas.shape[:2] == (self.sample_num, len(particle.active_clusters)):
 				continue
-			newVec, newPriors = draw_vectors(alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
+			newVec, newPriors = draw_vectors(self.alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
 			newVec = newVec.squeeze()
 			if not self.multivariate:
 				newVec *= 0.
+				newVec += 1e-10
 				newPriors *= 0.
 			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
 			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newVec[:, None, :]))
@@ -207,7 +221,7 @@ class Dirichlet_Hawkes_Process(object):
 
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
-		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index], alpha_true, particle, self)
+		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index])
 
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
@@ -252,15 +266,14 @@ class Dirichlet_Hawkes_Process(object):
 
 		log_update_prob = log_dirichlet_multinomial_distribution(cls_word_distribution, doc_word_distribution, cls_word_count, doc_word_count, self.vocabulary_size, self.theta0)
 
-		lograte = np.exp(self.active_cluster_logrates[selected_cluster_index])
-
 		div = self.active_cluster_logrates.values()
 		lg = len(div)
 		if lg not in ones: ones[lg] = np.ones((lg))
 
-		lograte = lograte / ones[lg].dot(np.exp(list(self.active_cluster_logrates.values())))
+		lograte = self.active_cluster_logrates[selected_cluster_index]
+		lograte = lograte - np.log(ones[lg].dot(np.exp(list(self.active_cluster_logrates.values()))))
 
-		log_update_prob += lograte
+		#log_update_prob += lograte
 
 		return log_update_prob
 
@@ -275,6 +288,11 @@ class Dirichlet_Hawkes_Process(object):
 		update_probs = np.exp(log_update_probs)
 		weights = weights * update_probs
 		weights = weights / np.sum(weights) # normalization
+		# if len(self.particles[0].active_clusters)==1:
+		# 	print(np.round(update_probs, 2))
+		# 	print(np.round(weights, 4))
+		# 	print([len(part.active_clusters) for part in self.particles])
+		# 	print()
 		resample_num = len(np.where(weights + 1e-5 < threshold)[0])
 
 		if resample_num == 0: # No need to resample particle, but still need to assign the updated weights to particles
@@ -424,13 +442,13 @@ def readObservations(folder, name, outputFolder):
 	V = len(wdToIndex)
 	return observations, V
 
-def saveDHP(DHP, folderOut, nameOut, time=-1):
+def saveDHP(DHP, folderOut, nameOut, date=-1):
 	while True:
 		try:
-			writeParticles(DHP, folderOut, nameOut, time)
+			writeParticles(DHP, folderOut, nameOut, date)
 			break
 		except Exception as e:
-			print("ERREUR", i, e)
+			print("ERREUR", e)
 			time.sleep(10)
 			continue
 
@@ -468,6 +486,8 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 	printRes = whether to print the results according to ground-truth (optional parameters of observations and alpha)
 	alphaTrue = ground truth alpha matrix used to generate the observations from gaussian RBF kernel
 	"""
+
+	ensureFolder(folderOut)
 
 	if vocabulary_size is None:
 		allWds = set()
@@ -507,45 +527,21 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
-			inferredClus = DHP.particles[0].docs2cluster_ID
-			print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
+			if trueClus[-1] is not None:
+				inferredClus = DHP.particles[0].docs2cluster_ID
+				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
-			keys = list(DHP.particles[0].clusters.keys())
+			keys = DHP.particles[0].active_clusters.keys()
 			for c in keys:
-				print(c, DHP.particles[0].clusters[c].alpha_final)
-
-			# On n'évalue pas les fonctions d'intensité : problèmes d'échangeabilité,
-			# et un même Hawkes peut être dissocié en deux dynamiques complémentaires
-
-			if alpha_true is not None and False:
-				trueClus = np.array(trueClus)
-				inferredClus = np.array(inferredClus)
-				infToTrue = {}
-				numObs = {}
-				for c in set(inferredClus):
-					ctrue, cnt = np.unique(trueClus[inferredClus==c], return_counts=True)
-					ctrue = ctrue[cnt==max(cnt)][0]
-					infToTrue[c] = ctrue
-					numObs[c] = len(inferredClus[inferredClus==c])
-				trueClus = list(trueClus)
-				inferredClus = list(inferredClus)
-
-				exponent = 1
-				err, div = 0., 0.
-				for c in infToTrue:
-					for c2 in DHP.particles[0].clusters[c].alpha_final:
-						err += numObs[c]*np.sum(np.abs(DHP.particles[0].clusters[c].alpha_final[c2] - alpha_true[infToTrue[c], infToTrue[c2]])**exponent)
-						div += numObs[c]*len(reference_time)
-
-						if c2 not in DHP.particles[0].active_clusters: continue
-						if c not in DHP.particles[0].active_clusters: continue
-						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2], alpha_true[infToTrue[c], infToTrue[c2]])
-				print("ERR", (err/(div+1e-20))**(1./exponent))
+				for c2 in keys:
+					if c2 in DHP.particles[0].clusters[c].alpha_final:
+						pass
+						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
 
 		if i%5000==1:
-			saveDHP(DHP, folderOut, nameOut, time=i)
+			saveDHP(DHP, folderOut, nameOut, date=-1)
 
-	saveDHP(DHP, folderOut, nameOut, time=-1)
+	saveDHP(DHP, folderOut, nameOut, date=-1)
 
 
 if __name__ == '__main__':
@@ -553,11 +549,11 @@ if __name__ == '__main__':
 		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
 	except:
 		nbClasses = 2
-		run_time = 1000
+		num_obs = 500
 		XP = "Overlap"
 
 		overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
-		overlap_temp = None  # Overlap between the kernels of the simulating process
+		overlap_temp = 0.05  # Overlap between the kernels of the simulating process
 
 		voc_per_class = 1000  # Number of words available for each cluster
 		perc_rand = 0.  # Percentage of events to which assign random textual cluster
@@ -565,26 +561,24 @@ if __name__ == '__main__':
 
 		DS = 0
 
-		lamb0 = 0.1  # Cannot be inferred
-		theta0 = 10.  # Has already been documented in LDA like models, DHP, etc ~0.01, 0.001
+		lamb0 = 0.035  # Cannot be inferred
+		theta0 = 10.  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001
 		alpha0 = 1.  # Uniform beta or Dirichlet prior
-		means = np.array([3, 7, 11])
-		sigs = np.array([0.5, 0.5, 0.5])
+		means = np.array([3, 5, 7, 11, 13])
+		sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
 
 		folder = "data/Synth/"
-		nameData = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
+		nameData = f"Obs_nbclasses={nbClasses}_lg={num_obs}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
 				   f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
 		dataFile = folder+nameData+"_events.txt"
 		outputFolder = folder.replace("data/", "output/")
 		alpha_true = np.load(folder+nameData+"_alpha.npy")
 
-		ensureFolder(outputFolder)
-
-		arrR = [2.]
+		arrR = [1.]
 		nbRuns = 1
 		sample_num = 2000
 		particle_num = 8
-		multivariate = False
+		multivariate = True
 		printRes = True
 
 
