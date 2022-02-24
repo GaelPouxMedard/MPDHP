@@ -22,6 +22,7 @@ retweet_count_per_lg = {"_it": 1, "_fr": 3, "_en": 50, "_es": 10}
 
 def treatAll():
     thres = None
+    numErr = 0
     for folder in sorted(os.listdir("./")):
         numTweets = 0
         setWords = set()
@@ -36,6 +37,7 @@ def treatAll():
             for file in sorted(os.listdir(f"./{folder}/{month}/")):
                 if ".jsonl.gz" not in file: continue
                 print(folder, month, file)
+                prevts = -1000
                 with gzip.open(f"./{folder}/{month}/{file}", 'r') as f:
                     for line in f:
                         d = json.loads(line)
@@ -50,6 +52,13 @@ def treatAll():
                         text = re.sub(r'\b\w{1,3}\b', '', text)
                         text = text.strip()
                         text = re.sub(r' +', ',', text)
+
+                        if timestamp<prevts:
+                            continue  # Only 116 errors over like 1.3 million
+                            numErr += 1
+                            print("================", numErr)
+                        else:
+                            prevts = timestamp
 
                         output.write(f"{timestamp}\t{text}\n")
 
