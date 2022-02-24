@@ -22,23 +22,6 @@ def showDictStruct(d):
                 print("-"*i, k, ":", d[k])
     recursivePrint(d, 1)
 
-def reduce_status(d):
-    d_red = {}
-    d_red["id"] = d["id"]
-    d_red["user_id"] = d["user"]["id"]
-    d_red["created_at"] = d["created_at"]
-    d_red["full_text"] = treatText(d["full_text"])
-    d_red["retweet_count"] = d["retweet_count"]
-    d_red["lang"] = d["lang"]
-
-    if "location" in d:
-        d_red["location"] = d["location"]
-
-    if "follower_count" in d:
-        d_red["follower_count"] = d["follower_count"]
-
-    return d_red
-
 # it=350.000 ; fr=380.000 ; en= ; es=330.000
 retweet_count_per_lg = {"_it": 1, "_fr": 3, "_en": 50, "_es": 10}
 
