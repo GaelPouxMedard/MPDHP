@@ -97,7 +97,6 @@ if RW=="0":
     folder = "data/Synth/"
     output_folder = "output/Synth/"
 
-
     # Overlap voc vs overlap temp
     def XP1(folder, output_folder):
         folder += "XP1/"
