@@ -214,6 +214,7 @@ def plotProcess(events, means, sigs, alpha, lamb0):
 
 
 
+
 def generate(params):
     (folder, DS, nbClasses, num_obs, multivariate,
      overlap_voc, overlap_temp, perc_rand,

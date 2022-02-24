@@ -33,7 +33,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.reference_time = reference_time
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
-		self.horizon = (max(self.reference_time)+10*max(self.bandwidth))
+		self.horizon = (max(self.reference_time)+max(self.bandwidth))
 		self.sample_num = sample_num
 		self.particles = []
 		for i in range(particle_num):
@@ -440,7 +440,8 @@ def readObservations(folder, name, outputFolder):
 		for wd in wdToIndex:
 			f.write(f"{wdToIndex[wd]}\t{wd}\n")
 	V = len(wdToIndex)
-	return observations, V
+	indexToWd = {idx: wd for wd, idx in wdToIndex.items()}
+	return observations, V, indexToWd
 
 def saveDHP(DHP, folderOut, nameOut, date=-1):
 	while True:
@@ -471,7 +472,7 @@ def writeParticles(DHP, folderOut, nameOut, time):
 	with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "w+") as f:
 		pickle.dump(DHP_copy, f)
 
-def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, alpha_true=None):
+def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, eval_on_go=False, indexToWd=None):
 	"""
 	observations = ([array int] index_obs, [array float] timestamp, ([array int] unique_words, [array int] count_words), [opt, int] temporal_cluster, [opt, int] textual_cluster)
 	folderOut = Output folder for the results
@@ -519,15 +520,17 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
 		DHP.sequential_monte_carlo(doc, threshold)
 
-		trueClus.append(int(float(news_item[-1][0])))
 
-		if (i%100==1 and printRes) or (i>0 and False):
-			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}h) - '
+		if (i%100==1 and printRes) or (i>0 and True):
+			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
 				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
 				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
 
-			if trueClus[-1] is not None:
+
+		if eval_on_go and printRes:
+			trueClus.append(int(float(news_item[-1][0])))
+			if (i%100==1 and printRes) or (i>0 and False):
 				inferredClus = DHP.particles[0].docs2cluster_ID
 				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
@@ -542,6 +545,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 			saveDHP(DHP, folderOut, nameOut, date=-1)
 
 	saveDHP(DHP, folderOut, nameOut, date=-1)
+	return DHP
 
 
 if __name__ == '__main__':
@@ -582,7 +586,7 @@ if __name__ == '__main__':
 		printRes = True
 
 
-	observations, V = readObservations(folder, nameData, outputFolder)
+	observations, V, indexToWd = readObservations(folder, nameData, outputFolder)
 
 	t = time.time()
 	i = 0
@@ -599,7 +603,9 @@ if __name__ == '__main__':
 			# profiler = pprofile.Profile()
 			# with profiler:
 
-			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=V, multivariate=multivariate, alpha_true=alpha_true)
+			run_fit(observations, outputFolder, name, lamb0, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+					sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+					vocabulary_size=V, multivariate=multivariate, alpha_true=alpha_true, indexToWd=indexToWd)
 
 			# profiler.print_stats()
 			# profiler.dump_stats("Benchmark.txt")

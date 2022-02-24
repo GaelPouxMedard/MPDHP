@@ -15,7 +15,7 @@ def ensureFolder(folder):
 
 def readObservations(folder, name_ds, output_folder):
     ensureFolder(output_folder)
-    dataFile = folder+name_ds+"_events.txt"
+    dataFile = folder+name_ds
     observations = []
     wdToIndex, index = {}, 0
     with open(dataFile, "r", encoding="utf-8") as f:
@@ -43,7 +43,8 @@ def readObservations(folder, name_ds, output_folder):
         for wd in wdToIndex:
             f.write(f"{wdToIndex[wd]}\t{wd}\n")
     V = len(wdToIndex)
-    return observations, V
+    indexToWd = {idx: wd for wd, idx in wdToIndex.items()}
+    return observations, V, indexToWd
 
 def getData(params):
     (folder, DS, nbClasses, run_time, multivariate,
@@ -52,15 +53,20 @@ def getData(params):
      lamb0_poisson, lamb0_classes, alpha0, means, sigs) = params
 
     name_ds = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
-              f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
+              f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"+"_events.txt"
 
-    observations, vocabulary_size = readObservations(folder, name_ds, output_folder)
+    observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
 
     return name_ds, observations, vocabulary_size
 
 
-RW = sys.argv[1]
-XP = sys.argv[2]
+try:
+    RW = sys.argv[1]
+    XP = sys.argv[2]
+except:
+    RW = "1"
+    XP = "it"
+
 
 if RW=="0":
     nbClasses = 2
@@ -86,6 +92,7 @@ if RW=="0":
     particle_num = 10  # Like 10 simultaneous runs
     multivariate = True
     printRes = True
+    eval_on_go = True
 
     folder = "data/Synth/"
     output_folder = "output/Synth/"
@@ -109,6 +116,7 @@ if RW=="0":
                     success = generate(params)
                     if success==-1: continue
                     name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in [1., 0., 0.5, 1.5]:
                         print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
@@ -118,7 +126,10 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate)
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
 
                         sys.exit()
 
@@ -141,6 +152,7 @@ if RW=="0":
                     success = generate(params)
                     if success==-1: continue
                     name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in [1., 0., 0.5, 1.5]:
                         print(f"DS {DS} - lamb0_poisson = {lamb0_poisson} - nbClasses = {nbClasses} - r = {r}")
@@ -150,7 +162,10 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate)
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
 
     # Words per obs vs overlap voc
     def XP3(folder, output_folder):
@@ -170,6 +185,7 @@ if RW=="0":
                     success = generate(params)
                     if success==-1: continue
                     name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in [1., 0., 0.5, 1.5]:
                         print(f"DS {DS} - words per obs = {words_per_obs} - overlap_voc = {overlap_voc} - r = {r}")
@@ -179,7 +195,10 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate)
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
 
     # Perc decorr vs r
     def XP4(folder, output_folder):
@@ -197,6 +216,7 @@ if RW=="0":
                 success = generate(params)
                 if success==-1: continue
                 name_ds, observations, vocabulary_size = getData(params)
+                name_ds = name_ds.replace("_events.txt", "")
 
                 for r in np.linspace(0, 3, 31):
                     print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
@@ -206,7 +226,10 @@ if RW=="0":
                                   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                   f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate)
+                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                            eval_on_go=eval_on_go)
 
     # Univariate
     def XP5(folder, output_folder):
@@ -227,6 +250,7 @@ if RW=="0":
                     success = generate(params)
                     if success==-1: continue
                     name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in [1., 0., 0.5, 1.5]:
                         print(f"DS {DS} - Univariate - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
@@ -236,7 +260,10 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num, printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate)
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
 
 
     if XP=="1":
@@ -251,4 +278,56 @@ if RW=="0":
         XP5(folder, output_folder)
 
 else:
-    pass
+    lamb0_poisson = 0.001  # Cannot be inferred
+    theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
+    alpha0 = 1.  # Uniform beta or Dirichlet prior
+
+    means = None
+    sigs = None
+
+    try:
+        timescale = sys.argv[3]
+    except:
+        timescale = "d"
+
+    if timescale=="min":
+        lamb0_poisson /= 1
+        means = [10*(i) for i in range(9)]  # Until 90min
+        sigs = [5 for i in range(9)]
+    elif timescale=="h":
+        lamb0_poisson /= 10
+        means = [120*(i) for i in range(5)]  # Until 600min
+        sigs = [60 for i in range(5)]
+    elif timescale=="d":
+        lamb0_poisson /= 10000
+        means = [3600*24*(i) for i in range(7)]  # Until 86400min
+        sigs = [3600*24/2 for i in range(7)]
+
+    means = np.array(means)
+    sigs = np.array(sigs)
+
+    r = 1.
+    sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
+    particle_num = 10  # Like 10 simultaneous runs
+    multivariate = True
+    printRes = True
+    eval_on_go = False
+
+    folder = "data/Covid/"
+    output_folder = "output/Covid/"
+    lg = XP
+    name_ds = f"COVID-19-events_{lg}.txt"
+    name_output = f"COVID-19-events_{lg}"
+
+    observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+    DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+            sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+            vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+
+
+    for c in DHP.particles[0].active_clusters:
+        print([indexToWd[idx] for idx in range(vocabulary_size) if DHP.particles[0].clusters[c].word_distribution[idx]!=0][:10],
+            len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
+
+
+
