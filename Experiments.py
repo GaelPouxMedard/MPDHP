@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from Generate_data import generate
 from MPDHP import run_fit
+import time
 
 np.random.seed(1111)
 
@@ -86,7 +87,7 @@ if RW=="0":
     means = np.array([3, 5, 7, 11, 13])
     sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
 
-    r = 1.
+    arrR = [1., 0., 0.5, 1.5]
     nbDS = 10
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
@@ -101,9 +102,17 @@ if RW=="0":
     def XP1(folder, output_folder):
         folder += "XP1/"
         output_folder += "XP1/"
+
+        overlaps_voc = np.linspace(0, 1, 11)
+        overlaps_temp = np.linspace(0, 1, 11)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
+
         for DS in range(nbDS):
-            for overlap_voc in np.linspace(0, 1, 11):
-                for overlap_temp in np.linspace(0, 1, 11):
+            for overlap_voc in overlaps_voc:
+                for overlap_temp in overlaps_temp:
                     overlap_voc = np.round(overlap_voc, 1)
                     overlap_temp = np.round(overlap_temp, 1)
 
@@ -117,7 +126,7 @@ if RW=="0":
                     name_ds, observations, vocabulary_size = getData(params)
                     name_ds = name_ds.replace("_events.txt", "")
 
-                    for r in [1., 0., 0.5, 1.5]:
+                    for r in arrR:
                         print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
                         r = np.round(r, 1)
 
@@ -130,16 +139,26 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
-                        sys.exit()
+                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
 
     # nbClasses vs lamb0
     def XP2(folder, output_folder):
         folder += "XP2/"
         output_folder += "XP2/"
+
+        arrNbClasses = list(range(1, 10))
+        arrLambPoisson = np.logspace(-4, 1, 11)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(arrNbClasses)*len(arrLambPoisson)*len(arrR)
+
         num_obs = 100000
         for DS in range(nbDS):
-            for nbClasses in list(range(1, 10)):
-                for lamb0_poisson in np.logspace(-4, 1, 11):
+            for nbClasses in arrNbClasses:
+                for lamb0_poisson in arrLambPoisson:
                     lamb0_poisson = np.round(lamb0_poisson, 1)
                     nbClasses = np.round(nbClasses, 1)
 
@@ -153,7 +172,7 @@ if RW=="0":
                     name_ds, observations, vocabulary_size = getData(params)
                     name_ds = name_ds.replace("_events.txt", "")
 
-                    for r in [1., 0., 0.5, 1.5]:
+                    for r in arrR:
                         print(f"DS {DS} - lamb0_poisson = {lamb0_poisson} - nbClasses = {nbClasses} - r = {r}")
                         r = np.round(r, 1)
 
@@ -166,13 +185,25 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
+                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
+
     # Words per obs vs overlap voc
     def XP3(folder, output_folder):
         folder += "XP3/"
         output_folder += "XP3/"
+
+        arr_words_per_obs = list(range(1, 20))
+        arr_overlap_voc = np.linspace(0, 1, 11)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(arr_words_per_obs)*len(arr_overlap_voc)*len(arrR)
+
         for DS in range(nbDS):
-            for words_per_obs in list(range(1, 20)):
-                for overlap_voc in np.linspace(0, 1, 11):
+            for words_per_obs in arr_words_per_obs:
+                for overlap_voc in arr_overlap_voc:
                     words_per_obs = np.round(words_per_obs, 0)
                     overlap_voc = np.round(overlap_voc, 1)
 
@@ -186,7 +217,7 @@ if RW=="0":
                     name_ds, observations, vocabulary_size = getData(params)
                     name_ds = name_ds.replace("_events.txt", "")
 
-                    for r in [1., 0., 0.5, 1.5]:
+                    for r in arrR:
                         print(f"DS {DS} - words per obs = {words_per_obs} - overlap_voc = {overlap_voc} - r = {r}")
                         r = np.round(r, 1)
 
@@ -199,12 +230,25 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
+
+                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
+
     # Perc decorr vs r
     def XP4(folder, output_folder):
         folder += "XP4/"
         output_folder += "XP4/"
+
+        arr_perc_rand = np.linspace(0, 1, 11)
+        arrR = np.linspace(0, 3, 31)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(arr_perc_rand)*len(arrR)
+
         for DS in range(nbDS):
-            for perc_rand in np.linspace(0, 1, 11):
+            for perc_rand in arr_perc_rand:
                 perc_rand = np.round(perc_rand, 0)
 
                 params = (folder, DS, nbClasses, num_obs, multivariate,
@@ -217,7 +261,7 @@ if RW=="0":
                 name_ds, observations, vocabulary_size = getData(params)
                 name_ds = name_ds.replace("_events.txt", "")
 
-                for r in np.linspace(0, 3, 31):
+                for r in arrR:
                     print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
                     r = np.round(r, 1)
 
@@ -230,14 +274,27 @@ if RW=="0":
                             printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                             eval_on_go=eval_on_go)
 
+
+                    print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                          f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                    i += 1
+
     # Univariate
     def XP5(folder, output_folder):
         folder += "XP5/"
         output_folder += "XP5/"
+
+        overlaps_voc = np.linspace(0, 1, 11)
+        overlaps_temp = np.linspace(0, 1, 11)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
+
         multivariate = False
         for DS in range(nbDS):
-            for overlap_voc in np.linspace(0, 1, 11):
-                for overlap_temp in np.linspace(0, 1, 11):
+            for overlap_voc in overlaps_voc:
+                for overlap_temp in overlaps_temp:
                     overlap_voc = np.round(overlap_voc, 1)
                     overlap_temp = np.round(overlap_temp, 1)
 
@@ -251,7 +308,7 @@ if RW=="0":
                     name_ds, observations, vocabulary_size = getData(params)
                     name_ds = name_ds.replace("_events.txt", "")
 
-                    for r in [1., 0., 0.5, 1.5]:
+                    for r in arrR:
                         print(f"DS {DS} - Univariate - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
                         r = np.round(r, 1)
 
@@ -263,6 +320,10 @@ if RW=="0":
                                 theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
+
+                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
 
 
     if XP=="1":
@@ -305,7 +366,7 @@ else:
     means = np.array(means)
     sigs = np.array(sigs)
 
-    r = 1.
+    arrR = [1., 0., 1.5, 0.5]
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
     multivariate = True
@@ -318,15 +379,24 @@ else:
     name_ds = f"COVID-19-events_{lg}.txt"
     name_output = f"COVID-19-events_{lg}"
 
-    observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-    DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
-            sample_num=sample_num, particle_num=particle_num, printRes=printRes,
-            vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+    t = time.time()
+    i = 0
+    nbRunsTot = len(arrR)
+
+    for r in arrR:
+        observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+        DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+                sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+                vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+
+        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+        i += 1
 
 
-    for c in DHP.particles[0].active_clusters:
-        print([indexToWd[idx] for idx in range(vocabulary_size) if DHP.particles[0].clusters[c].word_distribution[idx]!=0][:10],
-            len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
+        for c in DHP.particles[0].active_clusters:
+            print([indexToWd[idx] for idx in range(vocabulary_size) if DHP.particles[0].clusters[c].word_distribution[idx]!=0][:10],
+                len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
 
 
 
