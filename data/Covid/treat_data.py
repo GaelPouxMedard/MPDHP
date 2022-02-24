@@ -25,14 +25,16 @@ def treatAll():
     for folder in os.listdir("./"):
         numTweets = 0
         setWords = set()
-        if not os.path.isdir(folder): continue
+        if not os.path.isdir("./"+folder): continue
 
         for k in retweet_count_per_lg:
             if k in folder:
                 thres = retweet_count_per_lg[k]
+
         output = open(f"./{folder.replace('Tweets-treated-wo-retweets', 'events')}.txt", "w+", encoding="utf-8")
         for month in os.listdir(f"./{folder}/"):
             for file in os.listdir(f"./{folder}/{month}/"):
+                if ".jsonl.gz" not in file: continue
                 print(folder, month, file)
                 with gzip.open(f"./{folder}/{month}/{file}", 'r') as f:
                     for line in f:

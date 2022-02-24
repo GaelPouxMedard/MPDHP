@@ -214,7 +214,6 @@ def plotProcess(events, means, sigs, alpha, lamb0):
 
 
 
-
 def generate(params):
     (folder, DS, nbClasses, num_obs, multivariate,
      overlap_voc, overlap_temp, perc_rand,
@@ -248,7 +247,7 @@ def generate(params):
             for j in range(len(alpha[i])):
                 kernels.append(RBF.dot(alpha[i,j]))
         overlap_temp_temp = compute_overlap(t, kernels)
-        if overlap_temp_temp>overlap_temp-0.025 and overlap_temp_temp<overlap_temp+0.025:
+        if (overlap_temp_temp>overlap_temp-0.025 and overlap_temp_temp<overlap_temp+0.025) or nbClasses==1:
             print("Overlap temporel", overlap_temp)
             break
         nbTries += 1

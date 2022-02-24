@@ -521,7 +521,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		DHP.sequential_monte_carlo(doc, threshold)
 
 
-		if (i%100==1 and printRes) or (i>0 and True):
+		if (i%100==1 and printRes) or (i>0 and False):
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
 				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
