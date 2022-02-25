@@ -4,6 +4,8 @@ from copy import deepcopy as copy
 from scipy.stats import dirichlet as dir
 
 ones = {i: np.ones((i)) for i in range(1, 100)}
+global zeros
+zeros = None
 
 class Document(object):
 	def __init__(self, index, timestamp, word_distribution, word_count):
@@ -14,23 +16,28 @@ class Document(object):
 		self.word_count = np.array(word_count, dtype=int)
 		
 class Cluster(object):
-	def __init__(self, index, num_samples, active_clusters, alpha0, size_kernel, multivariate=True, index_cluster=None):# alpha, word_distribution, documents, word_count):
+	def __init__(self, index, num_samples):# alpha, word_distribution, documents, word_count):
 		super(Cluster, self).__init__()
 		self.index = index
 		self.alpha = None
 		self.alpha_final = {}
 		self.word_distribution = None
 		self.word_count = 0
-		self.multivariate = multivariate
-		self.likelihood_samples = np.zeros((num_samples), dtype=np.float)
-		self.likelihood_samples_sansLambda = np.zeros((num_samples), dtype=np.float)
-		self.triggers = np.zeros((num_samples), dtype=np.float)
-		self.integ_triggers = np.zeros((num_samples), dtype=np.float)  # Ones pcq premiere obs incluse
 
-		vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True,
-									   multivariate=self.multivariate, index_cluster=index_cluster)
-		self.alphas = vectors
-		self.log_priors = priors
+		global zeros
+		if zeros is None:
+			zeros = np.zeros((num_samples), dtype=np.float)
+
+		self.likelihood_samples = zeros.copy()
+		self.likelihood_samples_sansLambda = zeros.copy()
+		self.triggers = zeros.copy()
+		self.integ_triggers = zeros.copy()
+
+		# ===================================================
+		# vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True,
+		# 							   multivariate=self.multivariate, index_cluster=index_cluster)
+		# self.alphas = vectors
+		# self.log_priors = priors
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -39,23 +46,25 @@ class Cluster(object):
 			self.word_distribution += doc.word_distribution
 		self.word_count += doc.word_count
 
-	def __repr__(self):
-		return 'cluster index:' + str(self.index) + '\n' +'word_count: ' + str(self.word_count) \
-		+ '\nalpha:' + str(self.alpha)+"\n"
+	# def __repr__(self):
+	# 	return 'cluster index:' + str(self.index) + '\n' +'word_count: ' + str(self.word_count) \
+	# 	+ '\nalpha:' + str(self.alpha)+"\n"
 
 class Particle(object):
 	"""docstring for Particle"""
-	def __init__(self, weight):
+	def __init__(self, weight, alpha0, sample_num, size_kernel):
 		super(Particle, self).__init__()
 		self.weight = weight
 		self.log_update_prob = 0
-		self.clusters = {}  # can be store in the process for efficient memory implementation, key = cluster_index, value = cluster object
+		self.clusters = {}  # can be stored in the process for efficient memory implementation, key = cluster_index, value = cluster object
 		self.docs2cluster_ID = []  # the element is the cluster index of a sequence of document ordered by the index of document
 		self.all_timestamps = []  # same order as docs2cluster_ID
 		self.active_clusters = {}  # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
 		self.active_timestamps = None  # list of tuples (time, cluster)
 		self.cluster_num_by_now = 0
-		self.active_clus_to_ind = None  # Links the order of active clusters to their position in cluster.alpha
+		self.active_clus_to_ind = {}  # Links the order of active clusters to their position in cluster.alpha
+
+		self.alphas, self.log_priors = draw_vectors(alpha0, sample_num, [0], size_kernel, return_priors=True)
 
 	def __repr__(self):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
@@ -234,12 +243,13 @@ def g_theta(timeseq, reference_time, bandwidth, max_time):
 
 	return results
 
-def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandwidth, base_intensity, max_time):
+def update_cluster_likelihoods(active_timestamps, particle, cluster, reference_time, bandwidth, base_intensity, max_time):
 	timeseq = active_timestamps[:, 1]
 	clusseq = active_timestamps[:, 0]
 	num_active_clus = len(set(clusseq))
 
-	alphas = cluster.alphas
+	# alphas = cluster.alphas  # ==========================================
+	alphas = particle.alphas
 	Lambda_0 = base_intensity * max_time
 	integ_RBF = g_theta(np.array([timeseq[-1]]), reference_time, bandwidth, max_time)
 	unweighted_integ_triggering_kernel = np.zeros((num_active_clus, len(reference_time)))
@@ -268,7 +278,7 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 
 	return cluster
 
-def update_triggering_kernel_optim(cluster):
+def update_triggering_kernel_optim(particle, cluster):
 	''' procedure of triggering kernel for SMC
 		@param:
 			1. timeseq: list, time sequence including current time
@@ -280,8 +290,10 @@ def update_triggering_kernel_optim(cluster):
 			7. max_time: float
 		@rtype: 1-D numpy array with shape (length of alpha0,)
 	'''
-	alphas = cluster.alphas
-	log_priors = cluster.log_priors
+	# alphas = cluster.alphas  # ===================================================
+	# log_priors = cluster.log_priors # ===================================================
+	alphas = particle.alphas
+	log_priors = particle.log_priors
 	logLikelihood = cluster.likelihood_samples
 	log_update_weight = log_priors + logLikelihood
 	log_update_weight = log_update_weight - max(log_update_weight)  # Prevents overflow

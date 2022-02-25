@@ -37,7 +37,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.sample_num = sample_num
 		self.particles = []
 		for i in range(particle_num):
-			self.particles.append(Particle(weight = 1.0 / self.particle_num))
+			self.particles.append(Particle(1.0 / self.particle_num, alpha0, sample_num, len(reference_time)))
 
 		self.active_interval = None
 
@@ -72,16 +72,14 @@ class Dirichlet_Hawkes_Process(object):
 			particle.active_clusters[selected_cluster_index] = [doc.timestamp]
 			particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(particle.active_clusters))}
 			particle.active_timestamps = np.array([[selected_cluster_index, doc.timestamp]])
-			selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num,
-									   active_clusters=particle.active_clusters, alpha0=self.alpha0,
-									   size_kernel=len(self.reference_time),
-									   multivariate=self.multivariate, index_cluster=particle.active_clus_to_ind[selected_cluster_index])
+			selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num)
 			selected_cluster.add_document(doc)
 			particle.clusters[selected_cluster_index] = selected_cluster #.append(selected_cluster)
 			particle.docs2cluster_ID.append(selected_cluster_index)
 			self.active_cluster_logrates = {0:0, 1:0}
 
-			particle.clusters = self.update_clusters_samples(particle)
+			# particle.clusters = self.update_clusters_samples(particle)  # ====================================
+			particle = self.update_clusters_samples_particle(particle)
 
 		else: # A new document arrives
 			active_cluster_indexes = [0] # Zero for new cluster
@@ -169,15 +167,13 @@ class Dirichlet_Hawkes_Process(object):
 				self.active_cluster_logrates[selected_cluster_index] = self.active_cluster_logrates[0]
 				particle.active_clusters[selected_cluster_index] = [doc.timestamp]
 				particle.active_clus_to_ind = {int(c): i for i,c in enumerate(sorted(particle.active_clusters))}
-				selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num,
-										   active_clusters=particle.active_clusters, alpha0=self.alpha0,
-										   size_kernel=len(self.reference_time),
-										   multivariate=self.multivariate, index_cluster=particle.active_clus_to_ind[selected_cluster_index])
+				selected_cluster = Cluster(index = selected_cluster_index, num_samples=self.sample_num)
 				selected_cluster.add_document(doc)
 				particle.clusters[selected_cluster_index] = selected_cluster
 				particle.docs2cluster_ID.append(selected_cluster_index)
 
-				particle.clusters = self.update_clusters_samples(particle)
+				# particle.clusters = self.update_clusters_samples(particle)  # ====================================
+				particle = self.update_clusters_samples_particle(particle)
 
 			# Existing cluster drawn
 			else:
@@ -213,6 +209,26 @@ class Dirichlet_Hawkes_Process(object):
 				particle.clusters[cluster_index].alpha = newVec[0, None, :]
 		return particle.clusters
 
+	def update_clusters_samples_particle(self, particle):
+		if particle.alphas.shape[1] == len(particle.active_clusters):
+			return particle
+
+		newVec, newPriors = draw_vectors(self.alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
+		if not self.multivariate:
+			newVec *= 0.
+			newVec += 1e-10
+			newPriors *= 0.
+
+		particle.alphas = np.concatenate((particle.alphas, newVec), axis=1)
+		particle.log_priors = particle.log_priors + newPriors
+
+		for cluster_index in particle.active_clusters:
+				if particle.clusters[cluster_index].alpha is not None:
+					particle.clusters[cluster_index].alpha = np.concatenate((particle.clusters[cluster_index].alpha, newVec[np.random.randint(0,self.sample_num)]), axis=0)
+				else:
+					particle.clusters[cluster_index].alpha = newVec[np.random.randint(0,self.sample_num), 0, :]
+		return particle
+
 	def parameter_estimation(self, particle, selected_cluster_index):
 
 		# Observation is alone in the cluster => the cluster is new => random initialization of alpha
@@ -222,8 +238,8 @@ class Dirichlet_Hawkes_Process(object):
 		# 	return alpha
 
 		T = self.active_interval[1]
-		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
-		alpha = update_triggering_kernel_optim(particle.clusters[selected_cluster_index])
+		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
+		alpha = update_triggering_kernel_optim(particle, particle.clusters[selected_cluster_index])
 
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
@@ -246,16 +262,20 @@ class Dirichlet_Hawkes_Process(object):
 
 		for cluster_index in sorted(toRem, reverse=True):
 			del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
-			del particle.clusters[cluster_index].alphas
-			del particle.clusters[cluster_index].log_priors
+			#del particle.clusters[cluster_index].alphas  # ========================================
+			#del particle.clusters[cluster_index].log_priors  # ========================================
 			del particle.clusters[cluster_index].likelihood_samples
 			del particle.clusters[cluster_index].likelihood_samples_sansLambda
 			del particle.clusters[cluster_index].triggers
 			del particle.clusters[cluster_index].integ_triggers
 
+			# ==================================================
+			particle.alphas = np.delete(particle.alphas, particle.active_clus_to_ind[cluster_index], axis=1)
+
+			# ==================================================
 			for cluster_index_left in keys:
 				if cluster_index_left not in toRem:
-					particle.clusters[cluster_index_left].alphas = np.delete(particle.clusters[cluster_index_left].alphas, particle.active_clus_to_ind[cluster_index], axis=1)
+					#particle.clusters[cluster_index_left].alphas = np.delete(particle.clusters[cluster_index_left].alphas, particle.active_clus_to_ind[cluster_index], axis=1)
 					particle.clusters[cluster_index_left].alpha = np.delete(particle.clusters[cluster_index_left].alpha, particle.active_clus_to_ind[cluster_index], axis=0)
 
 		return particle
@@ -312,12 +332,12 @@ class Dirichlet_Hawkes_Process(object):
 			resample_distribution = multinomial(exp_num = resample_num, probabilities = resample_probs)
 			if not resample_distribution.shape: # The case of only one particle left
 				for _ in range(resample_num):
-					new_particle = copy(remaining_particles[0])
+					new_particle = self.copy_particle(remaining_particles[0])
 					remaining_particles.append(new_particle)
 			else: # The case of more than one particle left
 				for i, resample_times in enumerate(resample_distribution):
 					for _ in range(resample_times):
-						new_particle = copy(remaining_particles[i])
+						new_particle = self.copy_particle(remaining_particles[i])
 						remaining_particles.append(new_particle)
 
 			# Normalize the particle weights
@@ -327,6 +347,46 @@ class Dirichlet_Hawkes_Process(object):
 
 			self.particles = None
 			return remaining_particles
+
+	def copy_particle(self, particle):
+		part_copy = Particle(particle.weight, self.alpha0, 0, 0)
+
+		part_copy.log_update_prob = particle.log_update_prob
+		part_copy.cluster_num_by_now = particle.cluster_num_by_now
+
+		for c in particle.clusters:
+			clus = particle.clusters[c]
+			part_copy.clusters[c] = Cluster(clus.index, self.sample_num)
+
+			part_copy.clusters[c].alpha = particle.clusters[c].alpha.copy()
+
+			for c2 in particle.clusters[c].alpha_final:
+				part_copy.clusters[c].alpha_final[c2] = particle.clusters[c].alpha_final[c2].copy()
+
+			part_copy.clusters[c].word_distribution = particle.clusters[c].word_distribution.copy()
+			part_copy.clusters[c].word_count = particle.clusters[c].word_count
+
+
+		part_copy.docs2cluster_ID = particle.docs2cluster_ID + []
+		part_copy.all_timestamps = particle.all_timestamps + []
+
+		for c in particle.active_clusters:
+			part_copy.active_clusters[c] = particle.active_clusters[c].copy()
+
+			part_copy.clusters[c].likelihood_samples = particle.clusters[c].likelihood_samples.copy()
+			part_copy.clusters[c].likelihood_samples_sansLambda = particle.clusters[c].likelihood_samples_sansLambda.copy()
+			part_copy.clusters[c].triggers = particle.clusters[c].triggers.copy()
+			part_copy.clusters[c].integ_triggers = particle.clusters[c].integ_triggers.copy()
+
+		part_copy.active_timestamps = particle.active_timestamps.copy()
+		for c in particle.active_clus_to_ind:
+			part_copy.active_clus_to_ind[c] = particle.active_clus_to_ind[c]
+
+		part_copy.alphas = particle.alphas.copy()
+		part_copy.log_priors = particle.log_priors.copy()
+
+		return part_copy
+
 
 def getArgs(args):
 	import re
@@ -460,13 +520,20 @@ def writeParticles(DHP, folderOut, nameOut, time):
 	for i in range(len(DHP_copy.particles)):
 		for c in DHP_copy.particles[i].clusters:
 			if c in DHP_copy.particles[i].active_clusters:
-				del DHP_copy.particles[i].clusters[c].alphas
-				del DHP_copy.particles[i].clusters[c].log_priors
+				try:
+					del DHP_copy.particles[i].clusters[c].alphas  # ==============================================
+					del DHP_copy.particles[i].clusters[c].log_priors  # ==============================================
+				except:
+					pass
 				del DHP_copy.particles[i].clusters[c].alpha
 				del DHP_copy.particles[i].clusters[c].likelihood_samples
 				del DHP_copy.particles[i].clusters[c].likelihood_samples_sansLambda
 				del DHP_copy.particles[i].clusters[c].triggers
 				del DHP_copy.particles[i].clusters[c].integ_triggers
+
+		# ==============================================
+		del DHP_copy.particles[i].alphas
+		del DHP_copy.particles[i].log_priors
 
 	if time==-1: txtTime = "_final"
 	else: txtTime = f"_obs={int(time)}"

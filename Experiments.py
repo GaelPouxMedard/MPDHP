@@ -339,7 +339,7 @@ if RW=="0":
 
 else:
     lamb0_poisson = 0.01  # Cannot be inferred
-    theta0 = 0.0001  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
+    theta0 = 0.01  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
     alpha0 = 1.  # Uniform beta or Dirichlet prior
 
     means = None
@@ -385,19 +385,19 @@ else:
 
     for r in arrR:
 
-        import pprofile
-        profiler = pprofile.Profile()
-        with profiler:
+        # import pprofile
+        # profiler = pprofile.Profile()
+        # with profiler:
 
-            observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-            DHP = run_fit(observations[:10], output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
-                    sample_num=sample_num, particle_num=particle_num, printRes=printRes,
-                    vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+        observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+        DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+                sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+                vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
 
 
-        profiler.print_stats()
-        profiler.dump_stats("Benchmark.txt")
-        pause()
+        # profiler.print_stats()
+        # profiler.dump_stats("Benchmark.txt")
+        # pause()
 
         print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
               f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
@@ -405,7 +405,8 @@ else:
 
 
         for c in DHP.particles[0].active_clusters:
-            print([indexToWd[idx] for idx in range(vocabulary_size) if DHP.particles[0].clusters[c].word_distribution[idx]!=0][:10],
+            wds = [idx for _, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution))))))]
+            print([indexToWd[idx] for idx in wds][:10],
                 len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
 
 
