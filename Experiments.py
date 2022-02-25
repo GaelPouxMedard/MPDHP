@@ -387,7 +387,7 @@ else:
     nbRunsTot = len(arrR)
 
     for r in arrR:
-        name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,1)}_lamb0={lamb0_poisson}_" \
+        name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                       f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
         # import pprofile
