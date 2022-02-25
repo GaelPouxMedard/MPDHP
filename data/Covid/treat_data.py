@@ -55,8 +55,8 @@ def treatAll():
 
                         if timestamp<prevts:
                             numErr += 1
-                            continue  # Only 116 errors over like 1.3 million
                             print("================", numErr)
+                            continue  # Only 116 errors over like 1.3 million
                         else:
                             prevts = timestamp
 
