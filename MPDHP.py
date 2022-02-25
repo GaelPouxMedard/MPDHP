@@ -59,8 +59,9 @@ class Dirichlet_Hawkes_Process(object):
 	def particle_sampler(self, particle, doc):
 		# Sample cluster label
 		particle, selected_cluster_index = self.sampling_cluster_label(particle, doc)
-		# Update the triggering kernel
-		particle.clusters[selected_cluster_index].alpha = self.parameter_estimation(particle, selected_cluster_index)
+		if not (self.r>-1e-5 and self.r<1e-5):
+			# Update the triggering kernel
+			particle.clusters[selected_cluster_index].alpha = self.parameter_estimation(particle, selected_cluster_index)
 		# Calculate the weight update probability ; + bc log form
 		particle.log_update_prob = self.calculate_particle_log_update_prob(particle, selected_cluster_index, doc)
 		return particle
@@ -78,8 +79,8 @@ class Dirichlet_Hawkes_Process(object):
 			particle.docs2cluster_ID.append(selected_cluster_index)
 			self.active_cluster_logrates = {0:0, 1:0}
 
-			# particle.clusters = self.update_clusters_samples(particle)  # ====================================
-			particle = self.update_clusters_samples_particle(particle)
+			if not (self.r>-1e-5 and self.r<1e-5):
+				particle = self.update_clusters_samples_particle(particle)
 
 		else: # A new document arrives
 			active_cluster_indexes = [0] # Zero for new cluster
@@ -111,16 +112,20 @@ class Dirichlet_Hawkes_Process(object):
 
 				for active_cluster_index in particle.active_clusters:
 					active_cluster_indexes.append(active_cluster_index)
-					alpha = particle.clusters[active_cluster_index].alpha
 
-					mat=unweighted_triggering_kernel*alpha
-					lg = mat.shape[0]
-					if lg not in ones: ones[lg] = np.ones((lg))
-					mat = ones[lg].dot(mat)
-					lg = mat.shape[0]
-					if lg not in ones: ones[lg] = np.ones((lg))
-					mat = ones[lg].dot(mat)
-					rate = mat
+					if not (self.r>-1e-5 and self.r<1e-5):
+						alpha = particle.clusters[active_cluster_index].alpha
+
+						mat=unweighted_triggering_kernel*alpha
+						lg = mat.shape[0]
+						if lg not in ones: ones[lg] = np.ones((lg))
+						mat = ones[lg].dot(mat)
+						lg = mat.shape[0]
+						if lg not in ones: ones[lg] = np.ones((lg))
+						mat = ones[lg].dot(mat)
+						rate = mat
+					else:
+						rate = 0.
 
 					# Powered Dirichlet-Hawkes prior
 					active_cluster_rates.append(rate)
@@ -172,8 +177,8 @@ class Dirichlet_Hawkes_Process(object):
 				particle.clusters[selected_cluster_index] = selected_cluster
 				particle.docs2cluster_ID.append(selected_cluster_index)
 
-				# particle.clusters = self.update_clusters_samples(particle)  # ====================================
-				particle = self.update_clusters_samples_particle(particle)
+				if not (self.r>-1e-5 and self.r<1e-5):
+					particle = self.update_clusters_samples_particle(particle)
 
 			# Existing cluster drawn
 			else:
@@ -262,21 +267,17 @@ class Dirichlet_Hawkes_Process(object):
 
 		for cluster_index in sorted(toRem, reverse=True):
 			del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
-			#del particle.clusters[cluster_index].alphas  # ========================================
-			#del particle.clusters[cluster_index].log_priors  # ========================================
 			del particle.clusters[cluster_index].likelihood_samples
 			del particle.clusters[cluster_index].likelihood_samples_sansLambda
 			del particle.clusters[cluster_index].triggers
 			del particle.clusters[cluster_index].integ_triggers
 
-			# ==================================================
-			particle.alphas = np.delete(particle.alphas, particle.active_clus_to_ind[cluster_index], axis=1)
+			if not (self.r>-1e-5 and self.r<1e-5):
+				particle.alphas = np.delete(particle.alphas, particle.active_clus_to_ind[cluster_index], axis=1)
 
-			# ==================================================
-			for cluster_index_left in keys:
-				if cluster_index_left not in toRem:
-					#particle.clusters[cluster_index_left].alphas = np.delete(particle.clusters[cluster_index_left].alphas, particle.active_clus_to_ind[cluster_index], axis=1)
-					particle.clusters[cluster_index_left].alpha = np.delete(particle.clusters[cluster_index_left].alpha, particle.active_clus_to_ind[cluster_index], axis=0)
+				for cluster_index_left in keys:
+					if cluster_index_left not in toRem:
+						particle.clusters[cluster_index_left].alpha = np.delete(particle.clusters[cluster_index_left].alpha, particle.active_clus_to_ind[cluster_index], axis=0)
 
 		return particle
 	
@@ -358,10 +359,11 @@ class Dirichlet_Hawkes_Process(object):
 			clus = particle.clusters[c]
 			part_copy.clusters[c] = Cluster(clus.index, self.sample_num)
 
-			part_copy.clusters[c].alpha = particle.clusters[c].alpha.copy()
+			if not (self.r>-1e-5 and self.r<1e-5):
+				part_copy.clusters[c].alpha = particle.clusters[c].alpha.copy()
 
-			for c2 in particle.clusters[c].alpha_final:
-				part_copy.clusters[c].alpha_final[c2] = particle.clusters[c].alpha_final[c2].copy()
+				for c2 in particle.clusters[c].alpha_final:
+					part_copy.clusters[c].alpha_final[c2] = particle.clusters[c].alpha_final[c2].copy()
 
 			part_copy.clusters[c].word_distribution = particle.clusters[c].word_distribution.copy()
 			part_copy.clusters[c].word_count = particle.clusters[c].word_count
@@ -382,8 +384,9 @@ class Dirichlet_Hawkes_Process(object):
 		for c in particle.active_clus_to_ind:
 			part_copy.active_clus_to_ind[c] = particle.active_clus_to_ind[c]
 
-		part_copy.alphas = particle.alphas.copy()
-		part_copy.log_priors = particle.log_priors.copy()
+		if not (self.r>-1e-5 and self.r<1e-5):
+			part_copy.alphas = particle.alphas.copy()
+			part_copy.log_priors = particle.log_priors.copy()
 
 		return part_copy
 
@@ -520,19 +523,15 @@ def writeParticles(DHP, folderOut, nameOut, time):
 	for i in range(len(DHP_copy.particles)):
 		for c in DHP_copy.particles[i].clusters:
 			if c in DHP_copy.particles[i].active_clusters:
-				try:
-					del DHP_copy.particles[i].clusters[c].alphas  # ==============================================
-					del DHP_copy.particles[i].clusters[c].log_priors  # ==============================================
-				except:
-					pass
-				del DHP_copy.particles[i].clusters[c].alpha
+				if DHP.r != 0:
+					del DHP_copy.particles[i].clusters[c].alpha
 				del DHP_copy.particles[i].clusters[c].likelihood_samples
 				del DHP_copy.particles[i].clusters[c].likelihood_samples_sansLambda
 				del DHP_copy.particles[i].clusters[c].triggers
 				del DHP_copy.particles[i].clusters[c].integ_triggers
 
-		# ==============================================
-		del DHP_copy.particles[i].alphas
+		if DHP.r != 0:
+			del DHP_copy.particles[i].alphas
 		del DHP_copy.particles[i].log_priors
 
 	if time==-1: txtTime = "_final"

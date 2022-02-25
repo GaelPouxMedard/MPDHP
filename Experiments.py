@@ -338,17 +338,17 @@ if RW=="0":
         XP5(folder, output_folder)
 
 else:
-    lamb0_poisson = 0.01  # Cannot be inferred
-    theta0 = 0.01  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
-    alpha0 = 1.  # Uniform beta or Dirichlet prior
+    lamb0_poisson = 0.01  # Set at ~2sigma
 
     means = None
     sigs = None
 
     try:
         timescale = sys.argv[3]
+        theta0 = float(sys.argv[4])
     except:
-        timescale = "d"
+        timescale = "min"
+        theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
 
     if timescale=="min":
         lamb0_poisson /= 1
@@ -366,6 +366,8 @@ else:
     means = np.array(means)
     sigs = np.array(sigs)
 
+    alpha0 = 1.  # Uniform beta or Dirichlet prior
+
     arrR = [1., 0., 1.5, 0.5]
     sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
     particle_num = 20  # Like 10 simultaneous runs
@@ -377,13 +379,14 @@ else:
     output_folder = "output/Covid/"
     lg = XP
     name_ds = f"COVID-19-events_{lg}.txt"
-    name_output = f"COVID-19-events_{lg}"
 
     t = time.time()
     i = 0
     nbRunsTot = len(arrR)
 
     for r in arrR:
+        name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,1)}_lamb0={lamb0_poisson}_" \
+                      f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
         # import pprofile
         # profiler = pprofile.Profile()

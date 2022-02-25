@@ -33,12 +33,6 @@ class Cluster(object):
 		self.triggers = zeros.copy()
 		self.integ_triggers = zeros.copy()
 
-		# ===================================================
-		# vectors, priors = draw_vectors(alpha0, num_samples, active_clusters, size_kernel, return_priors=True,
-		# 							   multivariate=self.multivariate, index_cluster=index_cluster)
-		# self.alphas = vectors
-		# self.log_priors = priors
-
 	def add_document(self, doc):
 		if self.word_distribution is None:
 			self.word_distribution = np.copy(doc.word_distribution)
@@ -248,7 +242,6 @@ def update_cluster_likelihoods(active_timestamps, particle, cluster, reference_t
 	clusseq = active_timestamps[:, 0]
 	num_active_clus = len(set(clusseq))
 
-	# alphas = cluster.alphas  # ==========================================
 	alphas = particle.alphas
 	Lambda_0 = base_intensity * max_time
 	integ_RBF = g_theta(np.array([timeseq[-1]]), reference_time, bandwidth, max_time)
@@ -290,8 +283,6 @@ def update_triggering_kernel_optim(particle, cluster):
 			7. max_time: float
 		@rtype: 1-D numpy array with shape (length of alpha0,)
 	'''
-	# alphas = cluster.alphas  # ===================================================
-	# log_priors = cluster.log_priors # ===================================================
 	alphas = particle.alphas
 	log_priors = particle.log_priors
 	logLikelihood = cluster.likelihood_samples
