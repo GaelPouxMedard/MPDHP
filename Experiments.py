@@ -1,9 +1,11 @@
-import os
 import numpy as np
 import sys
 from Generate_data import generate
 from MPDHP import run_fit
 import time
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '5'
+os.environ['MKL_NUM_THREADS'] = '5'
 
 np.random.seed(1111)
 
