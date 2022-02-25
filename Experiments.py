@@ -251,7 +251,7 @@ if RW=="0":
 
         for DS in range(nbDS):
             for perc_rand in arr_perc_rand:
-                perc_rand = np.round(perc_rand, 0)
+                perc_rand = np.round(perc_rand, 2)
 
                 params = (folder, DS, nbClasses, num_obs, multivariate,
                           overlap_voc, overlap_temp, perc_rand,
