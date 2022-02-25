@@ -587,7 +587,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		DHP.sequential_monte_carlo(doc, threshold)
 
 
-		if (i%100==1 and printRes) or (i>0 and True):
+		if (i%1000==1 and printRes) or (i>0 and not eval_on_go):
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
 				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
@@ -596,7 +596,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 		if eval_on_go and printRes:
 			trueClus.append(int(float(news_item[-1][0])))
-			if (i%5000==1 and printRes) or (i>0 and False):
+			if (i%1000==1 and printRes) or (i>0 and False):
 				inferredClus = DHP.particles[0].docs2cluster_ID
 				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
@@ -607,7 +607,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 						pass
 						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
 
-		if i%100==1:
+		if i%5000==1:
 			saveDHP(DHP, folderOut, nameOut, date=-1)
 
 	saveDHP(DHP, folderOut, nameOut, date=-1)
