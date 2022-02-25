@@ -1,7 +1,8 @@
 import numpy as np
-from scipy.special import erfc, gammaln, gamma
-from copy import deepcopy as copy
-from scipy.stats import dirichlet as dir
+from scipy.special import erfc, gammaln
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '5'
+os.environ['MKL_NUM_THREADS'] = '5'
 
 ones = {i: np.ones((i)) for i in range(1, 100)}
 global zeros
