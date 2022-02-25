@@ -207,7 +207,7 @@ if RW=="0":
             for words_per_obs in arr_words_per_obs:
                 for overlap_voc in arr_overlap_voc:
                     words_per_obs = np.round(words_per_obs, 0)
-                    overlap_voc = np.round(overlap_voc, 1)
+                    overlap_voc = np.round(overlap_voc, 3)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
                               overlap_voc, overlap_temp, perc_rand,
