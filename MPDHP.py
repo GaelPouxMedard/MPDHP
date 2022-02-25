@@ -519,6 +519,7 @@ def saveDHP(DHP, folderOut, nameOut, date=-1):
 			continue
 
 def writeParticles(DHP, folderOut, nameOut, time):
+	from copy import deepcopy as copy
 	DHP_copy = copy(DHP)
 	for i in range(len(DHP_copy.particles)):
 		for c in DHP_copy.particles[i].clusters:
