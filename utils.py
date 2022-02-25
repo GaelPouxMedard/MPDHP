@@ -1,8 +1,8 @@
-import numpy as np
-from scipy.special import erfc, gammaln
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '5'
 os.environ['MKL_NUM_THREADS'] = '5'
+import numpy as np
+from scipy.special import erfc, gammaln
 
 ones = {i: np.ones((i)) for i in range(1, 100)}
 global zeros

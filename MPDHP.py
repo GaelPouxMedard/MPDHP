@@ -4,9 +4,6 @@ import time
 from utils import *
 from sklearn.metrics import normalized_mutual_info_score as NMI
 import gzip
-import os
-os.environ['OPENBLAS_NUM_THREADS'] = '5'
-os.environ['MKL_NUM_THREADS'] = '5'
 
 np.random.seed(12345)
 
