@@ -89,7 +89,7 @@ if RW=="0":
     means = np.array([3, 5, 7, 11, 13])
     sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
 
-    arrR = [1.]#, 0., 0.5, 1.5]
+    arrR = [1., 0., 0.5, 1.5]
     nbDS = 10
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
@@ -327,6 +327,51 @@ if RW=="0":
                               f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
 
+    # Num part vs num sample
+    def XP6(folder, output_folder):
+        folder += "XP6/"
+        output_folder += "XP6/"
+
+        num_part = [1, 2, 4, 8, 12, 16, 20, 25]
+        num_sample = np.logspace(1, 5, 10)
+
+        t = time.time()
+        i = 0
+        nbRunsTot = nbDS*len(num_part)*len(num_sample)*len(arrR)
+
+        for DS in range(nbDS):
+            for particle_num in num_part:
+                for sample_num in num_sample:
+                    sample_num = int(sample_num)
+                    particle_num = int(particle_num)
+
+                    params = (folder, DS, nbClasses, num_obs, multivariate,
+                              overlap_voc, overlap_temp, perc_rand,
+                              voc_per_class, words_per_obs, theta0,
+                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                    success = generate(params)
+                    if success==-1: continue
+                    name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
+
+                    for r in arrR:
+                        print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
+                        r = np.round(r, 1)
+
+                        name_output = f"{name_ds}_r={r}" \
+                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                      f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
+
+                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
+
 
     if XP=="1":
         XP1(folder, output_folder)
@@ -338,6 +383,8 @@ if RW=="0":
         XP4(folder, output_folder)
     if XP=="5":
         XP5(folder, output_folder)
+    if XP=="6":
+        XP6(folder, output_folder)
 
 else:
     lamb0_poisson = 0.01  # Set at ~2sigma
