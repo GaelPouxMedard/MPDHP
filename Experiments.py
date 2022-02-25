@@ -161,7 +161,7 @@ if RW=="0":
         for DS in range(nbDS):
             for nbClasses in arrNbClasses:
                 for lamb0_poisson in arrLambPoisson:
-                    lamb0_poisson = np.round(lamb0_poisson, 1)
+                    lamb0_poisson = np.round(lamb0_poisson, 4)
                     nbClasses = np.round(nbClasses, 1)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
