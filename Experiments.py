@@ -1,6 +1,6 @@
 import os
-os.environ['OPENBLAS_NUM_THREADS'] = '5'
-os.environ['MKL_NUM_THREADS'] = '5'
+os.environ['OPENBLAS_NUM_THREADS'] = '10'
+os.environ['MKL_NUM_THREADS'] = '10'
 import numpy as np
 import sys
 from Generate_data import generate

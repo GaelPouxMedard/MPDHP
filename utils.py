@@ -1,6 +1,4 @@
 import os
-os.environ['OPENBLAS_NUM_THREADS'] = '5'
-os.environ['MKL_NUM_THREADS'] = '5'
 import numpy as np
 from scipy.special import erfc, gammaln
 
