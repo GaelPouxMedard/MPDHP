@@ -141,9 +141,9 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
-                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # nbClasses vs lamb0
     def XP2(folder, output_folder):
@@ -187,9 +187,9 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
-                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # Words per obs vs overlap voc
     def XP3(folder, output_folder):
@@ -233,9 +233,9 @@ if RW=="0":
                                 eval_on_go=eval_on_go)
 
 
-                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # Perc decorr vs r
     def XP4(folder, output_folder):
@@ -277,9 +277,9 @@ if RW=="0":
                             eval_on_go=eval_on_go)
 
 
-                    print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                          f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                     i += 1
+                    print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                          f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # Univariate
     def XP5(folder, output_folder):
@@ -323,9 +323,9 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
-                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # Num part vs num sample
     def XP6(folder, output_folder):
@@ -368,9 +368,9 @@ if RW=="0":
                                 printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
                                 eval_on_go=eval_on_go)
 
-                        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
                         i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
 
     if XP=="1":
@@ -451,9 +451,9 @@ else:
         # profiler.dump_stats("Benchmark.txt")
         # pause()
 
-        print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
         i += 1
+        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
 
         for c in DHP.particles[0].active_clusters:
