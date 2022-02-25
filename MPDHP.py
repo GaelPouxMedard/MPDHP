@@ -195,7 +195,7 @@ class Dirichlet_Hawkes_Process(object):
 
 	def update_clusters_samples(self, particle):
 		for cluster_index in particle.active_clusters:
-			if particle.clusters[cluster_index].alphas.shape[:2] == (self.sample_num, len(particle.active_clusters)):
+			if particle.clusters[cluster_index].alphas.shape[1] == len(particle.active_clusters):
 				continue
 			newVec, newPriors = draw_vectors(self.alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
 			newVec = newVec.squeeze()
@@ -204,9 +204,11 @@ class Dirichlet_Hawkes_Process(object):
 				newVec += 1e-10
 				newPriors *= 0.
 			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
-			particle.clusters[cluster_index].alphas = np.hstack((particle.clusters[cluster_index].alphas, newVec[:, None, :]))
+
+			particle.clusters[cluster_index].alphas = np.concatenate((particle.clusters[cluster_index].alphas, newVec[:, None, :]), axis=1)
+
 			if particle.clusters[cluster_index].alpha is not None:
-				particle.clusters[cluster_index].alpha = np.vstack((particle.clusters[cluster_index].alpha, newVec[0, None, :]))
+				particle.clusters[cluster_index].alpha = np.concatenate((particle.clusters[cluster_index].alpha, newVec[0, None, :]), axis=0)
 			else:
 				particle.clusters[cluster_index].alpha = newVec[0, None, :]
 		return particle.clusters
@@ -521,7 +523,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		DHP.sequential_monte_carlo(doc, threshold)
 
 
-		if (i%5000==1 and printRes) or (i>0 and False):
+		if (i%5000==1 and printRes) or (i>0 and True):
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
 				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '

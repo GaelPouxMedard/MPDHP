@@ -64,9 +64,11 @@ class Particle(object):
 def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False, multivariate=True, index_cluster=None):
 	vec = None
 	prior = None
-	if method=="dirichlet":
+	if alpha0==1.:
+		vec = np.random.random((num_samples, len(active_clusters), size_kernel))
+	elif method=="dirichlet":
 		vec = dirichlet(alpha0, num_samples, active_clusters, size_kernel)
-	if method=="beta":
+	elif method=="beta":
 		vec = beta(alpha0, num_samples, active_clusters, size_kernel)
 
 	vecPriors = vec
@@ -81,9 +83,11 @@ def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta
 	vec[vec==1.] = 1-1e-10
 
 	if return_priors:
-		if method=="dirichlet":
+		if alpha0==1.:
+			prior = np.zeros((num_samples))
+		elif method=="dirichlet":
 			prior = log_dirichlet_PDF(vecPriors, alpha0)
-		if method=="beta":
+		elif method=="beta":
 			prior = log_beta_prior(vecPriors, alpha0)
 
 	if not return_priors:
@@ -244,8 +248,7 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 		indclus = indToClus[int(clus)]
 		unweighted_integ_triggering_kernel[indclus] = unweighted_integ_triggering_kernel[indclus] + integ_trig
 
-	alphas_times_gtheta = np.sum(alphas * unweighted_integ_triggering_kernel[None, :, :], axis=(-1, -2))  # Egal au nombre de points temporel partout je crois, simplifier ?
-
+	alphas_times_gtheta = np.tensordot(alphas, unweighted_integ_triggering_kernel, axes=2)
 
 	time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
 	if len(time_intervals)!=0:
@@ -256,7 +259,7 @@ def update_cluster_likelihoods(active_timestamps, cluster, reference_time, bandw
 			indclus = indToClus[int(clus)]
 			unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
-		cluster.triggers = np.sum(alphas*unweighted_triggering_kernel[None, :, :], axis=(-1, -2))
+		cluster.triggers = np.tensordot(alphas, unweighted_triggering_kernel, axes=2)
 		cluster.likelihood_samples_sansLambda += np.log(cluster.triggers + 1e-20)
 
 	cluster.integ_triggers += alphas_times_gtheta
@@ -291,10 +294,10 @@ def update_triggering_kernel_optim(cluster):
 	sumUpdateWeight = update_weight.dot(ones[lg])
 	update_weight = update_weight / sumUpdateWeight
 
-	#update_weight = update_weight.reshape(-1,1)
-	#alpha = np.sum(update_weight * alphas, axis = 0)
-	#alpha = np.tensordot(update_weight, alphas, axes=1)
-	alpha = update_weight.dot(alphas.transpose(1,0,2))
+	#alpha = np.sum(update_weight.reshape(-1,1) * alphas, axis = 0)
+	#alpha = update_weight.dot(alphas.transpose(1,0,2))
+	alpha = np.tensordot(update_weight, alphas, axes=1)
+
 
 	return alpha
 

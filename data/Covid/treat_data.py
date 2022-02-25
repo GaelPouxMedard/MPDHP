@@ -71,8 +71,8 @@ def treatAll():
 
                 print(numTweets, len(setWords))
 
-            #     if numTweets>2000: break
-            # if numTweets>2000: break
+                if numTweets>5000: break
+            if numTweets>5000: break
 
         output.close()
 

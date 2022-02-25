@@ -66,7 +66,7 @@ try:
     XP = sys.argv[2]
 except:
     RW = "1"
-    XP = "it"
+    XP = "fr"
 
 
 if RW=="0":
@@ -87,7 +87,7 @@ if RW=="0":
     means = np.array([3, 5, 7, 11, 13])
     sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
 
-    arrR = [1., 0., 0.5, 1.5]
+    arrR = [1.]#, 0., 0.5, 1.5]
     nbDS = 10
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
@@ -338,8 +338,8 @@ if RW=="0":
         XP5(folder, output_folder)
 
 else:
-    lamb0_poisson = 0.001  # Cannot be inferred
-    theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
+    lamb0_poisson = 0.01  # Cannot be inferred
+    theta0 = 0.0001  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
     alpha0 = 1.  # Uniform beta or Dirichlet prior
 
     means = None
@@ -367,7 +367,7 @@ else:
     sigs = np.array(sigs)
 
     arrR = [1., 0., 1.5, 0.5]
-    sample_num = 20000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
+    sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
     particle_num = 20  # Like 10 simultaneous runs
     multivariate = True
     printRes = True
@@ -384,10 +384,20 @@ else:
     nbRunsTot = len(arrR)
 
     for r in arrR:
-        observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-        DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
-                sample_num=sample_num, particle_num=particle_num, printRes=printRes,
-                vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+
+        import pprofile
+        profiler = pprofile.Profile()
+        with profiler:
+
+            observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+            DHP = run_fit(observations[:10], output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+                    sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+                    vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+
+
+        profiler.print_stats()
+        profiler.dump_stats("Benchmark.txt")
+        pause()
 
         print(f"r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
               f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
