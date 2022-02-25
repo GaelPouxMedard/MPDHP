@@ -67,8 +67,8 @@ try:
     RW = sys.argv[1]
     XP = sys.argv[2]
 except:
-    RW = "1"
-    XP = "fr"
+    RW = "0"
+    XP = "6"
 
 
 if RW=="0":
@@ -105,8 +105,8 @@ if RW=="0":
         folder += "XP1/"
         output_folder += "XP1/"
 
-        overlaps_voc = np.linspace(0, 1, 11)
-        overlaps_temp = np.linspace(0, 1, 11)
+        overlaps_voc = np.linspace(0, 1, 6)
+        overlaps_temp = np.linspace(0, 1, 6)
 
         t = time.time()
         i = 0
@@ -151,7 +151,7 @@ if RW=="0":
         output_folder += "XP2/"
 
         arrNbClasses = list(range(2, 10))
-        arrLambPoisson = np.logspace(-4, 1, 11)
+        arrLambPoisson = np.logspace(-4, 1, 6)
 
         t = time.time()
         i = 0
@@ -196,8 +196,8 @@ if RW=="0":
         folder += "XP3/"
         output_folder += "XP3/"
 
-        arr_words_per_obs = list(range(1, 20))
-        arr_overlap_voc = np.linspace(0, 1, 11)
+        arr_words_per_obs = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
+        arr_overlap_voc = np.linspace(0, 1, 6)
 
         t = time.time()
         i = 0
@@ -242,8 +242,8 @@ if RW=="0":
         folder += "XP4/"
         output_folder += "XP4/"
 
-        arr_perc_rand = np.linspace(0, 1, 11)
-        arrR = np.linspace(0, 3, 31)
+        arr_perc_rand = np.linspace(0, 1, 6)
+        arrR = np.linspace(0, 3, 16)
 
         t = time.time()
         i = 0
@@ -286,8 +286,8 @@ if RW=="0":
         folder += "XP5/"
         output_folder += "XP5/"
 
-        overlaps_voc = np.linspace(0, 1, 11)
-        overlaps_temp = np.linspace(0, 1, 11)
+        overlaps_voc = np.linspace(0, 1, 6)
+        overlaps_temp = np.linspace(0, 1, 6)
 
         t = time.time()
         i = 0
@@ -333,7 +333,7 @@ if RW=="0":
         output_folder += "XP6/"
 
         num_part = [1, 2, 4, 8, 12, 16, 20, 25]
-        num_sample = np.logspace(1, 5, 10)
+        num_sample = np.logspace(1, 5, 5)
 
         t = time.time()
         i = 0

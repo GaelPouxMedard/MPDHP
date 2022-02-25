@@ -3,8 +3,6 @@ import numpy as np
 from scipy.special import erfc, gammaln
 
 ones = {i: np.ones((i)) for i in range(1, 100)}
-global zeros
-zeros = None
 
 class Document(object):
 	def __init__(self, index, timestamp, word_distribution, word_count):
@@ -23,14 +21,10 @@ class Cluster(object):
 		self.word_distribution = None
 		self.word_count = 0
 
-		global zeros
-		if zeros is None:
-			zeros = np.zeros((num_samples), dtype=np.float)
-
-		self.likelihood_samples = zeros.copy()
-		self.likelihood_samples_sansLambda = zeros.copy()
-		self.triggers = zeros.copy()
-		self.integ_triggers = zeros.copy()
+		self.likelihood_samples = zeros = np.zeros((num_samples), dtype=np.float)
+		self.likelihood_samples_sansLambda = zeros = np.zeros((num_samples), dtype=np.float)
+		self.triggers = zeros = np.zeros((num_samples), dtype=np.float)
+		self.integ_triggers = zeros = np.zeros((num_samples), dtype=np.float)
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
