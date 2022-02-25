@@ -115,8 +115,8 @@ if RW=="0":
         for DS in range(nbDS):
             for overlap_voc in overlaps_voc:
                 for overlap_temp in overlaps_temp:
-                    overlap_voc = np.round(overlap_voc, 1)
-                    overlap_temp = np.round(overlap_temp, 1)
+                    overlap_voc = np.round(overlap_voc, 2)
+                    overlap_temp = np.round(overlap_temp, 2)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
                               overlap_voc, overlap_temp, perc_rand,
@@ -130,7 +130,7 @@ if RW=="0":
 
                     for r in arrR:
                         print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
-                        r = np.round(r, 1)
+                        r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
@@ -162,7 +162,7 @@ if RW=="0":
             for nbClasses in arrNbClasses:
                 for lamb0_poisson in arrLambPoisson:
                     lamb0_poisson = np.round(lamb0_poisson, 5)
-                    nbClasses = np.round(nbClasses, 1)
+                    nbClasses = int(nbClasses)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
                               overlap_voc, overlap_temp, perc_rand,
@@ -176,7 +176,7 @@ if RW=="0":
 
                     for r in arrR:
                         print(f"DS {DS} - lamb0_poisson = {lamb0_poisson} - nbClasses = {nbClasses} - r = {r}")
-                        r = np.round(r, 1)
+                        r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
@@ -206,7 +206,7 @@ if RW=="0":
         for DS in range(nbDS):
             for words_per_obs in arr_words_per_obs:
                 for overlap_voc in arr_overlap_voc:
-                    words_per_obs = np.round(words_per_obs, 0)
+                    words_per_obs = int(words_per_obs)
                     overlap_voc = np.round(overlap_voc, 3)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
@@ -221,7 +221,7 @@ if RW=="0":
 
                     for r in arrR:
                         print(f"DS {DS} - words per obs = {words_per_obs} - overlap_voc = {overlap_voc} - r = {r}")
-                        r = np.round(r, 1)
+                        r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
@@ -265,7 +265,7 @@ if RW=="0":
 
                 for r in arrR:
                     print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
-                    r = np.round(r, 1)
+                    r = np.round(r, 2)
 
                     name_output = f"{name_ds}_r={r}" \
                                   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
@@ -312,7 +312,7 @@ if RW=="0":
 
                     for r in arrR:
                         print(f"DS {DS} - Univariate - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
-                        r = np.round(r, 1)
+                        r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
@@ -357,7 +357,7 @@ if RW=="0":
 
                     for r in arrR:
                         print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
-                        r = np.round(r, 1)
+                        r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
