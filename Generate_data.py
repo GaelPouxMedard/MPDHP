@@ -251,7 +251,7 @@ def generate(params):
             print("Overlap temporel", overlap_temp)
             break
         nbTries += 1
-        if nbTries>100000:
+        if nbTries>1000000:
             print(f"Overlap temp = {overlap_temp} too hard to compute")
             return -1
 
