@@ -152,6 +152,7 @@ if RW=="0":
 
         arrNbClasses = list(range(2, 10))
         arrLambPoisson = np.logspace(-4, 1, 6)
+        arrR = [1.]
 
         t = time.time()
         i = 0
@@ -198,6 +199,7 @@ if RW=="0":
 
         arr_words_per_obs = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
         arr_overlap_voc = np.linspace(0, 1, 6)
+        arrR = [1.]
 
         t = time.time()
         i = 0
@@ -334,6 +336,7 @@ if RW=="0":
 
         num_part = [1, 2, 4, 8, 12, 16, 20, 25]
         num_sample = np.logspace(1, 5, 5)
+        arrR = [1.]
 
         t = time.time()
         i = 0
