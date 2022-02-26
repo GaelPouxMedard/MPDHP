@@ -42,7 +42,7 @@ def readObservations(folder, name_ds, output_folder):
 
             tup = (i, timestamp, (uniquewords, cntwords), (clusTxt, clusTmp))
             observations.append(tup)
-    with open(output_folder+name_ds+"_indexWords.txt", "w+", encoding="utf-8") as f:
+    with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "w+", encoding="utf-8") as f:
         for wd in wdToIndex:
             f.write(f"{wdToIndex[wd]}\t{wd}\n")
     V = len(wdToIndex)
@@ -57,6 +57,7 @@ def getData(params):
 
     name_ds = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
               f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"+"_events.txt"
+    output_folder = folder.replace("data/", "output/")
 
     observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
 
