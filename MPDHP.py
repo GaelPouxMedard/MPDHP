@@ -340,7 +340,7 @@ class Dirichlet_Hawkes_Process(object):
 					remaining_files.append(file[1])
 			for removed_particle in removed_particles:
 				for file in removed_particle.files_clusters:
-					if file[1] not in remaining_files[1]:
+					if file[1] not in remaining_files:
 						os.remove(file[1])  # file[0] = index
 						remaining_files.append(file[1])
 
