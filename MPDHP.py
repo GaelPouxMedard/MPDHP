@@ -1,3 +1,4 @@
+import os
 import pickle
 import sys
 import time
@@ -19,7 +20,7 @@ pause()
 
 class Dirichlet_Hawkes_Process(object):
 	"""docstring for Dirichlet Hawkes Prcess"""
-	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r, multivariate):
+	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r, multivariate, folder_output=None, name_output=None):
 		super(Dirichlet_Hawkes_Process, self).__init__()
 		self.r = r
 		self.multivariate = multivariate
@@ -34,7 +35,10 @@ class Dirichlet_Hawkes_Process(object):
 		self.sample_num = sample_num
 		self.particles = []
 		for i in range(particle_num):
-			self.particles.append(Particle(1.0 / self.particle_num, alpha0, sample_num, len(reference_time)))
+			self.particles.append(Particle(i, 1.0 / self.particle_num, alpha0, sample_num, len(reference_time)))
+
+		self.folder_output = folder_output
+		self.name_output = name_output
 
 		self.active_interval = None
 
@@ -264,10 +268,12 @@ class Dirichlet_Hawkes_Process(object):
 
 		for cluster_index in sorted(toRem, reverse=True):
 			del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
-			del particle.clusters[cluster_index].likelihood_samples
-			del particle.clusters[cluster_index].likelihood_samples_sansLambda
-			del particle.clusters[cluster_index].triggers
-			del particle.clusters[cluster_index].integ_triggers
+			# if self.r != 0:
+			# 	del particle.clusters[cluster_index].alpha
+			# del particle.clusters[cluster_index].likelihood_samples
+			# del particle.clusters[cluster_index].likelihood_samples_sansLambda
+			# del particle.clusters[cluster_index].triggers
+			# del particle.clusters[cluster_index].integ_triggers
 
 			if not (self.r>-1e-5 and self.r<1e-5):
 				particle.alphas = np.delete(particle.alphas, particle.active_clus_to_ind[cluster_index], axis=1)
@@ -275,6 +281,11 @@ class Dirichlet_Hawkes_Process(object):
 				for cluster_index_left in keys:
 					if cluster_index_left not in toRem:
 						particle.clusters[cluster_index_left].alpha = np.delete(particle.clusters[cluster_index_left].alpha, particle.active_clus_to_ind[cluster_index], axis=0)
+
+			file_cluster = writeClusters(particle.clusters[cluster_index], self.r, particle.index, self.folder_output, self.name_output)
+			particle.files_clusters.append((cluster_index, file_cluster))
+
+			del particle.clusters[cluster_index]
 
 		return particle
 	
@@ -321,6 +332,18 @@ class Dirichlet_Hawkes_Process(object):
 			return particles
 		else:
 			remaining_particles = [particle for i, particle in enumerate(particles) if weights[i] + 1e-5 > threshold ]
+			removed_particles = [particle for i, particle in enumerate(particles) if weights[i] + 1e-5 <= threshold ]
+			removed_indexes = [particle.index for particle in removed_particles]
+			remaining_files = []
+			for remaining_particle in remaining_particles:
+				for file in remaining_particle.files_clusters:
+					remaining_files.append(file)
+			for removed_particle in removed_particles:
+				for file in removed_particle.files_clusters:
+					if file not in remaining_files:
+						os.remove(file[1])  # file[0] = index
+						remaining_files.append(file)
+
 			resample_probs = weights[np.where(weights + 1e-5 > threshold)]
 			resample_probs = resample_probs/np.sum(resample_probs)
 			remaining_particle_weights = weights[np.where(weights + 1e-5 > threshold)]
@@ -329,14 +352,16 @@ class Dirichlet_Hawkes_Process(object):
 
 			resample_distribution = multinomial(exp_num = resample_num, probabilities = resample_probs)
 			if not resample_distribution.shape: # The case of only one particle left
-				for _ in range(resample_num):
-					new_particle = self.copy_particle(remaining_particles[0])
+				for idx in removed_indexes:
+					new_particle = self.copy_particle(remaining_particles[0], idx)
 					remaining_particles.append(new_particle)
 			else: # The case of more than one particle left
+				j = 0
 				for i, resample_times in enumerate(resample_distribution):
 					for _ in range(resample_times):
-						new_particle = self.copy_particle(remaining_particles[i])
+						new_particle = self.copy_particle(remaining_particles[i], removed_indexes[j])
 						remaining_particles.append(new_particle)
+						j += 1
 
 			# Normalize the particle weights
 			update_weights = np.array([particle.weight for particle in remaining_particles]); update_weights = update_weights / np.sum(update_weights)
@@ -346,8 +371,9 @@ class Dirichlet_Hawkes_Process(object):
 			self.particles = None
 			return remaining_particles
 
-	def copy_particle(self, particle):
-		part_copy = Particle(particle.weight, self.alpha0, 0, 0)
+	def copy_particle(self, particle, index=None):
+		if index is None: index = particle.index
+		part_copy = Particle(index, particle.weight, self.alpha0, 0, 0)
 
 		part_copy.log_update_prob = particle.log_update_prob
 		part_copy.cluster_num_by_now = particle.cluster_num_by_now
@@ -368,6 +394,7 @@ class Dirichlet_Hawkes_Process(object):
 
 		part_copy.docs2cluster_ID = particle.docs2cluster_ID + []
 		part_copy.all_timestamps = particle.all_timestamps + []
+		part_copy.files_clusters = particle.files_clusters + []
 
 		for c in particle.active_clusters:
 			part_copy.active_clusters[c] = particle.active_clusters[c].copy()
@@ -516,27 +543,73 @@ def saveDHP(DHP, folderOut, nameOut, date=-1):
 			continue
 
 def writeParticles(DHP, folderOut, nameOut, time):
-	from copy import deepcopy as copy
-	DHP_copy = copy(DHP)
-	for i in range(len(DHP_copy.particles)):
-		for c in DHP_copy.particles[i].clusters:
-			if c in DHP_copy.particles[i].active_clusters:
-				if DHP.r != 0:
-					del DHP_copy.particles[i].clusters[c].alpha
-				del DHP_copy.particles[i].clusters[c].likelihood_samples
-				del DHP_copy.particles[i].clusters[c].likelihood_samples_sansLambda
-				del DHP_copy.particles[i].clusters[c].triggers
-				del DHP_copy.particles[i].clusters[c].integ_triggers
+	DHP_copy = Dirichlet_Hawkes_Process(DHP.particle_num, DHP.base_intensity, DHP.theta0, DHP.alpha0,
+										DHP.reference_time, DHP.vocabulary_size, DHP.bandwidth,
+										DHP.sample_num, DHP.r, DHP.multivariate, DHP.folder_output, DHP.name_output)
 
-		if DHP.r != 0:
-			del DHP_copy.particles[i].alphas
-		del DHP_copy.particles[i].log_priors
+	DHP_copy.particles = []
+	for particle in DHP.particles:
+		part_copy = Particle(particle.index, particle.weight, DHP.alpha0, 0, 0)
+
+		part_copy.log_update_prob = particle.log_update_prob
+		part_copy.cluster_num_by_now = particle.cluster_num_by_now
+		part_copy.docs2cluster_ID = particle.docs2cluster_ID + []
+		part_copy.all_timestamps = particle.all_timestamps + []
+		part_copy.files_clusters = particle.files_clusters + []
+
+		DHP_copy.particles.append(part_copy)
+
+	for i in range(len(DHP.particles)):
+		for clus in DHP.particles[i].clusters:  # Only active clusters here
+			file_cluster = writeClusters(DHP.particles[i].clusters[clus], DHP.r, DHP.particles[i].index, DHP.folder_output, DHP.name_output)
+			DHP_copy.particles[i].files_clusters.append((clus, file_cluster))
+
+	# from copy import deepcopy as copy
+	# DHP_copy = copy(DHP)
+	# for i in range(len(DHP_copy.particles)):
+	# 	for c in DHP_copy.particles[i].clusters:
+	# 		del DHP_copy.particles[i].clusters[c]
+	# 		if c in DHP_copy.particles[i].active_clusters:
+	# 			del DHP_copy.particles[i].active_clusters[c]
+	#
+	# 			# if DHP.r != 0:
+	# 			# 	del DHP_copy.particles[i].clusters[c].alpha
+	# 			#
+	# 			# del DHP_copy.particles[i].clusters[c].likelihood_samples
+	# 			# del DHP_copy.particles[i].clusters[c].likelihood_samples_sansLambda
+	# 			# del DHP_copy.particles[i].clusters[c].triggers
+	# 			# del DHP_copy.particles[i].clusters[c].integ_triggers
+	#
+	# 	if DHP.r != 0:
+	# 		del DHP_copy.particles[i].alphas
+	# 	del DHP_copy.particles[i].log_priors
+	# 	del DHP_copy.particles[i].active_clus_to_ind
 
 	if time==-1: txtTime = "_final"
 	else: txtTime = f"_obs={int(time)}"
 
 	with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "w+") as f:
 		pickle.dump(DHP_copy, f)
+
+def writeClusters(cluster, r, particle_num, folderOut, nameOut):
+	ensureFolder(folderOut+"/Clusters/")
+	cluster_copy = Cluster(cluster.index, num_samples=-1)
+
+	finaldir = folderOut+"/Clusters/"+nameOut+f"_particle={particle_num}_cluster={cluster.index}.pkl.gz"
+
+	if not (r>-1e-5 and r<1e-5):
+		cluster_copy.alpha = cluster.alpha.copy()
+
+		for c2 in cluster.alpha_final:
+			cluster_copy.alpha_final[c2] = cluster.alpha_final[c2].copy()
+
+	cluster_copy.word_distribution = cluster.word_distribution.copy()
+	cluster_copy.word_count = cluster.word_count
+
+	with gzip.open(finaldir, "w+") as f:
+		pickle.dump(cluster_copy, f)
+
+	return finaldir
 
 def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, eval_on_go=False, indexToWd=None):
 	"""
@@ -575,7 +648,8 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 	DHP = Dirichlet_Hawkes_Process(particle_num = particle_num, base_intensity = base_intensity, theta0 = theta0,
 								   alpha0 = alpha0, reference_time = reference_time, vocabulary_size = vocabulary_size,
-								   bandwidth = bandwidth, sample_num = sample_num, r=r, multivariate=multivariate)
+								   bandwidth = bandwidth, sample_num = sample_num, r=r, multivariate=multivariate,
+								   folder_output=folderOut, name_output=nameOut)
 
 	t = time.time()
 

@@ -21,10 +21,11 @@ class Cluster(object):
 		self.word_distribution = None
 		self.word_count = 0
 
-		self.likelihood_samples = zeros = np.zeros((num_samples), dtype=np.float)
-		self.likelihood_samples_sansLambda = zeros = np.zeros((num_samples), dtype=np.float)
-		self.triggers = zeros = np.zeros((num_samples), dtype=np.float)
-		self.integ_triggers = zeros = np.zeros((num_samples), dtype=np.float)
+		if num_samples != -1:
+			self.likelihood_samples = zeros = np.zeros((num_samples), dtype=np.float)
+			self.likelihood_samples_sansLambda = zeros = np.zeros((num_samples), dtype=np.float)
+			self.triggers = zeros = np.zeros((num_samples), dtype=np.float)
+			self.integ_triggers = zeros = np.zeros((num_samples), dtype=np.float)
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -39,8 +40,9 @@ class Cluster(object):
 
 class Particle(object):
 	"""docstring for Particle"""
-	def __init__(self, weight, alpha0, sample_num, size_kernel):
+	def __init__(self, index, weight, alpha0, sample_num, size_kernel):
 		super(Particle, self).__init__()
+		self.index = index
 		self.weight = weight
 		self.log_update_prob = 0
 		self.clusters = {}  # can be stored in the process for efficient memory implementation, key = cluster_index, value = cluster object
@@ -50,6 +52,7 @@ class Particle(object):
 		self.active_timestamps = None  # list of tuples (time, cluster)
 		self.cluster_num_by_now = 0
 		self.active_clus_to_ind = {}  # Links the order of active clusters to their position in cluster.alpha
+		self.files_clusters = []
 
 		self.alphas, self.log_priors = draw_vectors(alpha0, sample_num, [0], size_kernel, return_priors=True)
 
