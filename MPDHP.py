@@ -268,12 +268,6 @@ class Dirichlet_Hawkes_Process(object):
 
 		for cluster_index in sorted(toRem, reverse=True):
 			del particle.active_clusters[cluster_index]  # If no observation is relevant anymore, the cluster has 0 chance to get chosen => we remove it from the calculations
-			# if self.r != 0:
-			# 	del particle.clusters[cluster_index].alpha
-			# del particle.clusters[cluster_index].likelihood_samples
-			# del particle.clusters[cluster_index].likelihood_samples_sansLambda
-			# del particle.clusters[cluster_index].triggers
-			# del particle.clusters[cluster_index].integ_triggers
 
 			if not (self.r>-1e-5 and self.r<1e-5):
 				particle.alphas = np.delete(particle.alphas, particle.active_clus_to_ind[cluster_index], axis=1)
@@ -285,6 +279,12 @@ class Dirichlet_Hawkes_Process(object):
 			file_cluster = writeClusters(particle.clusters[cluster_index], self.r, particle.index, self.folder_output, self.name_output)
 			particle.files_clusters.append((cluster_index, file_cluster))
 
+			# if self.r != 0:
+			# 	del particle.clusters[cluster_index].alpha
+			# del particle.clusters[cluster_index].likelihood_samples
+			# del particle.clusters[cluster_index].likelihood_samples_sansLambda
+			# del particle.clusters[cluster_index].triggers
+			# del particle.clusters[cluster_index].integ_triggers
 			del particle.clusters[cluster_index]
 
 		return particle
