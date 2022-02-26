@@ -95,35 +95,38 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
         if tries>10:
             print(f"Textual overlap of {overlap_voc} too hard to compute")
             return [], -1
-        probs = np.array([sorted(np.random.multinomial(1e9, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
-        probs = probs/np.sum(probs, axis=-1)[:, None]
+        try:
+            probs = np.array([sorted(np.random.multinomial(1e9, pvals=np.random.dirichlet(theta0)).squeeze(), reverse=True) for c in range(nbClasses)])
+            probs = probs/np.sum(probs, axis=-1)[:, None]
 
-        voc_clusters = [np.array(list(range(int(voc_per_class))), dtype=int) + c*voc_per_class for c in range(nbClasses)]
+            voc_clusters = [np.array(list(range(int(voc_per_class))), dtype=int) + c*voc_per_class for c in range(nbClasses)]
 
-        probs_final = probs
-        if overlap_voc is not None:
-            overlap=-1
-            probs_temp = None
-            while overlap<overlap_voc:
-                # Overlap
+            probs_final = probs
+            if overlap_voc is not None:
+                overlap=-1
+                probs_temp = None
+                while overlap<overlap_voc:
+                    # Overlap
+                    for c in range(nbClasses):
+                        #voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
+                        voc_clusters[c] -= int(c)
+
+                    probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
+                    for c in range(nbClasses):
+                        probs_temp[c][voc_clusters[c]] = probs[c]
+                    overlap = compute_overlap(list(range(voc_per_class*nbClasses)), probs_temp)
+
+                probs_final = []
                 for c in range(nbClasses):
-                    #voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
-                    voc_clusters[c] -= int(c)
+                    probs_final.append(probs_temp[c][voc_clusters[c]])
 
-                probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
-                for c in range(nbClasses):
-                    probs_temp[c][voc_clusters[c]] = probs[c]
-                overlap = compute_overlap(list(range(voc_per_class*nbClasses)), probs_temp)
-
-            probs_final = []
-            for c in range(nbClasses):
-                probs_final.append(probs_temp[c][voc_clusters[c]])
-
-            # x = np.array(list(range(voc_per_class*nbClasses)))
-            # for c in range(nbClasses):
-            #     plt.plot(x, probs_temp[c])
-            # plt.show()
-        break
+                # x = np.array(list(range(voc_per_class*nbClasses)))
+                # for c in range(nbClasses):
+                #     plt.plot(x, probs_temp[c])
+                # plt.show()
+            break
+        except:
+            print(f"Textual overlap {overlap_voc} hard to reach - Try {tries}")
 
     for c in range(len(voc_clusters)):
         for w in range(len(voc_clusters[c])):
