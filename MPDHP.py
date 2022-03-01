@@ -191,8 +191,6 @@ class Dirichlet_Hawkes_Process(object):
 			# Initialized in if==0
 			particle.active_timestamps = np.vstack((particle.active_timestamps, [selected_cluster_index, doc.timestamp]))
 
-		particle.all_timestamps.append(doc.timestamp)
-
 		return particle, selected_cluster_index
 
 	def update_clusters_samples(self, particle):
@@ -391,9 +389,7 @@ class Dirichlet_Hawkes_Process(object):
 			part_copy.clusters[c].word_distribution = particle.clusters[c].word_distribution.copy()
 			part_copy.clusters[c].word_count = particle.clusters[c].word_count
 
-
 		part_copy.docs2cluster_ID = particle.docs2cluster_ID + []
-		part_copy.all_timestamps = particle.all_timestamps + []
 		part_copy.files_clusters = particle.files_clusters + []
 
 		for c in particle.active_clusters:
@@ -554,7 +550,6 @@ def writeParticles(DHP, folderOut, nameOut, time):
 		part_copy.log_update_prob = particle.log_update_prob
 		part_copy.cluster_num_by_now = particle.cluster_num_by_now
 		part_copy.docs2cluster_ID = particle.docs2cluster_ID + []
-		part_copy.all_timestamps = particle.all_timestamps + []
 		part_copy.files_clusters = particle.files_clusters + []
 
 		DHP_copy.particles.append(part_copy)

@@ -415,9 +415,9 @@ else:
         means = [120*(i) for i in range(5)]  # Until 600min
         sigs = [60 for i in range(5)]
     elif timescale=="d":
-        lamb0_poisson /= 10000
-        means = [3600*24*(i) for i in range(7)]  # Until 86400min
-        sigs = [3600*24/2 for i in range(7)]
+        lamb0_poisson /= 100
+        means = [60*24*(i) for i in range(7)]  # Until 86400min
+        sigs = [60*24/2 for i in range(7)]
 
     means = np.array(means)
     sigs = np.array(sigs)

@@ -22,10 +22,10 @@ class Cluster(object):
 		self.word_count = 0
 
 		if num_samples != -1:
-			self.likelihood_samples = zeros = np.zeros((num_samples), dtype=np.float)
-			self.likelihood_samples_sansLambda = zeros = np.zeros((num_samples), dtype=np.float)
-			self.triggers = zeros = np.zeros((num_samples), dtype=np.float)
-			self.integ_triggers = zeros = np.zeros((num_samples), dtype=np.float)
+			self.likelihood_samples = np.zeros((num_samples), dtype=np.float)
+			self.likelihood_samples_sansLambda = np.zeros((num_samples), dtype=np.float)
+			self.triggers = np.zeros((num_samples), dtype=np.float)
+			self.integ_triggers = np.zeros((num_samples), dtype=np.float)
 
 	def add_document(self, doc):
 		if self.word_distribution is None:
@@ -47,7 +47,6 @@ class Particle(object):
 		self.log_update_prob = 0
 		self.clusters = {}  # can be stored in the process for efficient memory implementation, key = cluster_index, value = cluster object
 		self.docs2cluster_ID = []  # the element is the cluster index of a sequence of document ordered by the index of document
-		self.all_timestamps = []  # same order as docs2cluster_ID
 		self.active_clusters = {}  # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
 		self.active_timestamps = None  # list of tuples (time, cluster)
 		self.cluster_num_by_now = 0
