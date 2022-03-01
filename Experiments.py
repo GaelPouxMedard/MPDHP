@@ -291,12 +291,13 @@ if RW=="0":
 
         overlaps_voc = np.linspace(0, 1, 6)
         overlaps_temp = np.linspace(0, 1, 6)
+        multivariate = False
+        lamb0_classes = 0.15  # Slightly higher to avoid gaps in Hawkes process
 
         t = time.time()
         i = 0
         nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
 
-        multivariate = False
         for DS in range(nbDS):
             for overlap_voc in overlaps_voc:
                 for overlap_temp in overlaps_temp:
