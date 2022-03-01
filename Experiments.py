@@ -69,7 +69,7 @@ try:
     XP = sys.argv[2]
 except:
     RW = "0"
-    XP = "6"
+    XP = "5"
 
 
 if RW=="0":
@@ -344,20 +344,21 @@ if RW=="0":
         nbRunsTot = nbDS*len(num_part)*len(num_sample)*len(arrR)
 
         for DS in range(nbDS):
+
+            params = (folder, DS, nbClasses, num_obs, multivariate,
+                      overlap_voc, overlap_temp, perc_rand,
+                      voc_per_class, words_per_obs, theta0,
+                      lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+            success = generate(params)
+            if success==-1: continue
+            name_ds, observations, vocabulary_size = getData(params)
+            name_ds = name_ds.replace("_events.txt", "")
+
             for particle_num in num_part:
                 for sample_num in num_sample:
                     sample_num = int(sample_num)
                     particle_num = int(particle_num)
-
-                    params = (folder, DS, nbClasses, num_obs, multivariate,
-                              overlap_voc, overlap_temp, perc_rand,
-                              voc_per_class, words_per_obs, theta0,
-                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
-
-                    success = generate(params)
-                    if success==-1: continue
-                    name_ds, observations, vocabulary_size = getData(params)
-                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in arrR:
                         print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
