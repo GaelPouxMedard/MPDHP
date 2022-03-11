@@ -109,9 +109,11 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "0"
-        XP = "6"
+        XP = "1"
 
     num_NMI_last = 5000
+    norm_err = 0.2
+    nbDS = 2  # ======================================================================================================
 
 
     if RW=="0":
@@ -133,8 +135,7 @@ if __name__=="__main__":
             means = np.array([3, 5, 7, 11, 13])
             sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
 
-            arrR = [1., 0., 0.5, 1.5]
-            arrR = [0., 0.5, 1., 1.5] # ======================================================================================================= REMOVE MEEEEEEEEEEEEEEEEEEEEEEEEEE
+            arrR = [0., 0.5, 1., 1.5]
             nbDS = 10
             sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
             particle_num = 10  # Like 10 simultaneous runs
@@ -164,7 +165,7 @@ if __name__=="__main__":
             lab_overlap_voc = {}
             lab_overlap_temp = {}
 
-            nbDS = 2  # ======================================================================================================
+
             r_ref = 1.
             index_req1 = None
             for i_r, r in enumerate(arrR):
@@ -246,6 +247,9 @@ if __name__=="__main__":
                             plt.title(f"r = {r}")
 
                         plt.gca().invert_yaxis()
+                        for ix in range(len(lab_overlap_voc)):
+                            for iy in range(len(lab_overlap_temp)):
+                                plt.plot([ix+0.5-matStd[i_r, ix, iy]/(2*norm_err), ix+0.5+matStd[i_r, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("Textual overlap")
                         plt.ylabel("Temporal overlap")
                     plt.tight_layout()
@@ -270,8 +274,6 @@ if __name__=="__main__":
             matStd[:] = np.nan
             lab_arrNbClasses = {}
             lab_arrLambPoisson = {}
-
-            nbDS = 1  # ======================================================================================================
 
             num_obs = 100000
             for i_nbClasses, nbClasses in enumerate(arrNbClasses):
@@ -343,8 +345,10 @@ if __name__=="__main__":
                         sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
                                     cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
                         plt.title(f"r = {r}")
-
                         plt.gca().invert_yaxis()
+                        for ix in range(len(lab_arrNbClasses)):
+                            for iy in range(len(lab_arrLambPoisson)):
+                                plt.plot([ix+0.5-matStd[i_r, ix, iy]/(2*norm_err), ix+0.5+matStd[i_r, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("# classes")
                         plt.ylabel(r"$\lambda_0$")
                     plt.tight_layout()
@@ -371,7 +375,7 @@ if __name__=="__main__":
             lab_arr_overlap_voc = {}
 
 
-            nbDS = 2  # ======================================================================================================
+
 
             for i_words_per_obs,words_per_obs in enumerate(arr_words_per_obs):
                 for i_overlap_voc,overlap_voc in enumerate(arr_overlap_voc):
@@ -443,6 +447,9 @@ if __name__=="__main__":
                         plt.title(f"r = {r}")
 
                         plt.gca().invert_yaxis()
+                        for ix in range(len(lab_arr_words_per_obs)):
+                            for iy in range(len(lab_arr_overlap_voc)):
+                                plt.plot([ix+0.5-matStd[i_r, ix, iy]/(2*norm_err), ix+0.5+matStd[i_r, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("# words per event")
                         plt.ylabel("Textual overlap")
                     plt.tight_layout()
@@ -459,13 +466,15 @@ if __name__=="__main__":
             arr_perc_rand = np.linspace(0, 1, 6)
             arrR = np.linspace(0, 3, 16)
 
+            words_per_obs = 20  # 5, 10, 20
+
             matRes = np.empty((3, len(arrR), len(arr_perc_rand)))  # 3 = txt, temp, diff
             matRes[:] = np.nan
             matStd = np.empty((3, len(arrR), len(arr_perc_rand)))
             matStd[:] = np.nan
             lab_arr_perc_rand = {}
 
-            nbDS = 2  # ======================================================================================================
+
 
             for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
                 perc_rand = np.round(perc_rand, 2)
@@ -551,6 +560,9 @@ if __name__=="__main__":
                         sns.heatmap(np.round(matRes[0], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=False,
                                     cbar_kws={"label":r"NMI$_{text}$", "shrink": 0.6}, vmin=0, vmax=1)
                         plt.gca().invert_yaxis()
+                        for ix in range(len(arrR)):
+                            for iy in range(len(lab_arr_perc_rand)):
+                                plt.plot([ix+0.5-matStd[0, ix, iy]/(2*norm_err), ix+0.5+matStd[0, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("r")
                         plt.ylabel("Percentage decorrelated")
 
@@ -559,6 +571,9 @@ if __name__=="__main__":
                         sns.heatmap(np.round(matRes[1], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=False,
                                     cbar_kws={"label":r"NMI$_{temp}$", "shrink": 0.6}, vmin=0, vmax=1)
                         plt.gca().invert_yaxis()
+                        for ix in range(len(arrR)):
+                            for iy in range(len(lab_arr_perc_rand)):
+                                plt.plot([ix+0.5-matStd[1, ix, iy]/(2*norm_err), ix+0.5+matStd[1, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("r")
                         plt.ylabel("Percentage decorrelated")
 
@@ -566,6 +581,9 @@ if __name__=="__main__":
                         sns.heatmap(np.round(matRes[2], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="PuOr", square=True, annot=False,
                                     cbar_kws={"label":r"NMI$_{text}$-NMI$_{temp}$", "shrink": 0.6}, vmin=-1, vmax=1)
                         plt.gca().invert_yaxis()
+                        for ix in range(len(arrR)):
+                            for iy in range(len(lab_arr_perc_rand)):
+                                plt.plot([ix+0.5-matStd[2, ix, iy]/(2*norm_err), ix+0.5+matStd[2, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("r")
                         plt.ylabel("Percentage decorrelated")
 
@@ -594,7 +612,6 @@ if __name__=="__main__":
             lab_overlap_voc = {}
             lab_overlap_temp = {}
 
-            nbDS = 2  # ======================================================================================================
             r_ref = 1.
             index_req1 = None
             for i_r, r in enumerate(arrR):
@@ -677,6 +694,11 @@ if __name__=="__main__":
                                         cbar_kws={"label":r"$\Delta$ NMI", "shrink": 0.6}, vmin=-1, vmax=1)
                             plt.title(f"r = {r}")
 
+
+                        for ix in range(len(lab_overlap_voc)):
+                            for iy in range(len(lab_overlap_temp)):
+                                plt.plot([ix+0.5-matStd[i_r, ix, iy]/(2*norm_err), ix+0.5+matStd[i_r, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
+
                         plt.gca().invert_yaxis()
                         plt.xlabel("Textual overlap")
                         plt.ylabel("Temporal overlap")
@@ -702,7 +724,7 @@ if __name__=="__main__":
             lab_num_part = {}
             lab_num_sample = {}
 
-            nbDS = 2  # ======================================================================================================
+
 
 
 
@@ -768,11 +790,11 @@ if __name__=="__main__":
                             matRes[i_r, i_particle_num, i_sample_num] = meanTabNMI
                             matStd[i_r, i_particle_num, i_sample_num] = stdTabNMI
 
-                    scale=6
-                    plt.figure(figsize=(4*scale, 1*scale))
+                    scale=7
+                    plt.figure(figsize=(1*scale, 1*scale))
                     for i_r, r in enumerate(arrR):
 
-                        plt.subplot(1, 4, i_r+1)
+                        plt.subplot(1, 1, i_r+1)
                         lab_x = [str(lab_num_part[idx]) for idx in lab_num_part]
                         lab_y = [str(lab_num_sample[idx]) for idx in lab_num_sample]
 
@@ -782,6 +804,11 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         plt.xlabel("# particles")
                         plt.ylabel("# samples")
+
+                        for ix in range(len(lab_num_part)):
+                            for iy in range(len(lab_num_sample)):
+                                plt.plot([ix+0.5-matStd[i_r, ix, iy]/(2*norm_err), ix+0.5+matStd[i_r, ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
+
                     plt.tight_layout()
                     plt.savefig(results_folder+"heatmap.pdf")
                     plt.close()
