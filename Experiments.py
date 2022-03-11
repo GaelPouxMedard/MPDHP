@@ -181,7 +181,7 @@ if RW=="0":
                         r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \
-                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
                         run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
