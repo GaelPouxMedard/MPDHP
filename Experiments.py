@@ -364,7 +364,7 @@ if RW=="0":
                     particle_num = int(particle_num)
 
                     for r in arrR:
-                        print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
+                        print(f"DS {DS} - particles = {particle_num} - sample num = {sample_num} - r = {r}")
                         r = np.round(r, 2)
 
                         name_output = f"{name_ds}_r={r}" \

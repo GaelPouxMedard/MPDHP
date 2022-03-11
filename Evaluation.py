@@ -109,7 +109,7 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "0"
-        XP = "4"
+        XP = "6"
 
     num_NMI_last = 5000
 
@@ -157,7 +157,6 @@ if __name__=="__main__":
             overlaps_voc = np.array([0., 0.2, 0.4, 0.6, 0.8])
             overlaps_temp = np.array([0.2, 0.4, 0.6, 0.8])
 
-
             matRes = np.empty((len(arrR), len(overlaps_voc), len(overlaps_temp)))
             matRes[:] = np.nan
             matStd = np.empty((len(arrR), len(overlaps_voc), len(overlaps_temp)))
@@ -167,6 +166,9 @@ if __name__=="__main__":
 
             nbDS = 2  # ======================================================================================================
             r_ref = 1.
+            index_req1 = None
+            for i_r, r in enumerate(arrR):
+                if r<r_ref+0.01 and r>r_ref-0.01: index_req1 = i_r
 
             for i_overlap_voc, overlap_voc in enumerate(sorted(overlaps_voc)):
                 for i_overlap_temp, overlap_temp in enumerate(sorted(overlaps_temp)):
@@ -177,7 +179,6 @@ if __name__=="__main__":
                     lab_overlap_temp[i_overlap_temp] = str(overlap_temp)
 
                     arrResR = [[] for _ in range(len(arrR))]
-                    index_req1 = None
                     for DS in range(nbDS):
                         params = (folder, DS, nbClasses, num_obs, multivariate,
                                   overlap_voc, overlap_temp, perc_rand,
@@ -192,8 +193,6 @@ if __name__=="__main__":
                             continue
 
                         for i_r, r in enumerate(arrR):
-                            if r<r_ref+0.01 and r>r_ref-0.01: index_req1 = i_r
-
                             print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
                             r = np.round(r, 2)
 
@@ -222,7 +221,7 @@ if __name__=="__main__":
 
                     arrResR = np.array(arrResR)
                     for i_r, r in enumerate(arrR):
-                        if len(arrResR[i_r]) != 0:
+                        if not np.isnan(arrResR[i_r]).all():
                             if i_r != index_req1:
                                 arrResR[i_r] -= arrResR[index_req1]
                             meanTabNMI = np.nanmean(arrResR[i_r])
@@ -230,12 +229,12 @@ if __name__=="__main__":
                             matRes[i_r, i_overlap_voc, i_overlap_temp] = meanTabNMI
                             matStd[i_r, i_overlap_voc, i_overlap_temp] = stdTabNMI
 
+                    scale=6
+                    plt.figure(figsize=(4*scale, 1*scale))
                     for i_r, r in enumerate(arrR):
                         plt.subplot(1, 4, i_r+1)
                         lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
                         lab_y = [str(lab_overlap_temp[idx]) for idx in lab_overlap_temp]
-                        scale=6
-                        plt.figure(figsize=(4*scale, 1*scale))
 
                         if i_r == index_req1:
                             sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
@@ -249,9 +248,9 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         plt.xlabel("Textual overlap")
                         plt.ylabel("Temporal overlap")
-                        plt.tight_layout()
-                        plt.savefig(results_folder+"heatmap.pdf")
-                        plt.close()
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
         # nbClasses vs lamb0
         def XP2(folder, output_folder):
@@ -328,18 +327,18 @@ if __name__=="__main__":
 
                     arrResR = np.array(arrResR)
                     for i_r, r in enumerate(arrR):
-                        if len(arrResR[i_r]) != 0:
+                        if not np.isnan(arrResR[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR[i_r])
                             stdTabNMI = np.nanstd(arrResR[i_r])
                             matRes[i_r, i_nbClasses, i_lamb0_poisson] = meanTabNMI
                             matStd[i_r, i_nbClasses, i_lamb0_poisson] = stdTabNMI
 
+                    scale=6
+                    plt.figure(figsize=(1*scale, 1*scale))
                     for i_r, r in enumerate(arrR):
                         lab_x = [str(lab_arrNbClasses[idx]) for idx in lab_arrNbClasses]
                         lab_y = [str(lab_arrLambPoisson[idx]) for idx in lab_arrLambPoisson]
 
-                        scale=6
-                        plt.figure(figsize=(1*scale, 1*scale))
 
                         sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
                                     cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
@@ -348,9 +347,9 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         plt.xlabel("# classes")
                         plt.ylabel(r"$\lambda_0$")
-                        plt.tight_layout()
-                        plt.savefig(results_folder+"heatmap.pdf")
-                        plt.close()
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
         # Words per obs vs overlap voc
         def XP3(folder, output_folder):
@@ -432,12 +431,12 @@ if __name__=="__main__":
                             matRes[i_r, i_words_per_obs, i_overlap_voc] = meanTabNMI
                             matStd[i_r, i_words_per_obs, i_overlap_voc] = stdTabNMI
 
+                    scale=6
+                    plt.figure(figsize=(1*scale, 1*scale))
                     for i_r, r in enumerate(arrR):
                         lab_x = [str(lab_arr_words_per_obs[idx]) for idx in lab_arr_words_per_obs]
                         lab_y = [str(lab_arr_overlap_voc[idx]) for idx in lab_arr_overlap_voc]
 
-                        scale=6
-                        plt.figure(figsize=(1*scale, 1*scale))
 
                         sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
                                     cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
@@ -446,9 +445,9 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         plt.xlabel("# words per event")
                         plt.ylabel("Textual overlap")
-                        plt.tight_layout()
-                        plt.savefig(results_folder+"heatmap.pdf")
-                        plt.close()
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
         # Perc decorr vs r
         def XP4(folder, output_folder):
@@ -575,38 +574,56 @@ if __name__=="__main__":
                         plt.savefig(results_folder+"heatmap.pdf")
                         plt.close()
 
-
         # Univariate
         def XP5(folder, output_folder):
             folder += "XP5/"
             output_folder += "XP5/"
+            results_folder = output_folder.replace("output/", "results/")
+            ensureFolder(results_folder)
 
             overlaps_voc = np.linspace(0, 1, 6)
             overlaps_temp = np.linspace(0, 1, 6)
             multivariate = False
             lamb0_classes = 0.15  # Slightly higher to avoid gaps in Hawkes process
 
-            t = time.time()
-            i = 0
-            nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
 
-            for DS in range(nbDS):
-                for overlap_voc in overlaps_voc:
-                    for overlap_temp in overlaps_temp:
-                        overlap_voc = np.round(overlap_voc, 1)
-                        overlap_temp = np.round(overlap_temp, 1)
+            matRes = np.empty((len(arrR), len(overlaps_voc), len(overlaps_temp)))
+            matRes[:] = np.nan
+            matStd = np.empty((len(arrR), len(overlaps_voc), len(overlaps_temp)))
+            matStd[:] = np.nan
+            lab_overlap_voc = {}
+            lab_overlap_temp = {}
 
+            nbDS = 2  # ======================================================================================================
+            r_ref = 1.
+            index_req1 = None
+            for i_r, r in enumerate(arrR):
+                if r<r_ref+0.01 and r>r_ref-0.01: index_req1 = i_r
+
+            for i_overlap_voc,overlap_voc in enumerate(overlaps_voc):
+                for i_overlap_temp,overlap_temp in enumerate(overlaps_temp):
+                    overlap_voc = np.round(overlap_voc, 1)
+                    overlap_temp = np.round(overlap_temp, 1)
+
+                    lab_overlap_voc[i_overlap_voc] = str(overlap_voc)
+                    lab_overlap_temp[i_overlap_temp] = str(overlap_temp)
+
+                    arrResR = [[] for _ in range(len(arrR))]
+
+                    for DS in range(nbDS):
                         params = (folder, DS, nbClasses, num_obs, multivariate,
                                   overlap_voc, overlap_temp, perc_rand,
                                   voc_per_class, words_per_obs, theta0,
                                   lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                        success = generate(params)
-                        if success==-1: continue
-                        name_ds, observations, vocabulary_size = getData(params)
-                        name_ds = name_ds.replace("_events.txt", "")
+                        try:
+                            name_ds, observations, vocabulary_size = getData(params)
+                            name_ds = name_ds.replace("_events.txt", "")
+                        except Exception as e:
+                            print(f"Data not found - {e}")
+                            continue
 
-                        for r in arrR:
+                        for i_r, r in enumerate(arrR):
                             print(f"DS {DS} - Univariate - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
                             r = np.round(r, 2)
 
@@ -614,61 +631,160 @@ if __name__=="__main__":
                                           f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                    eval_on_go=eval_on_go)
+                            try:
+                                DHP = read_particles(output_folder, name_output, get_clusters=False)
+                            except Exception as e:
+                                print(f"Output not found - {e}")
+                                arrResR[i_r].append(np.nan)
+                                continue
 
-                            i += 1
-                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                            selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
+                            clus_inf = selected_particle.docs2cluster_ID
+                            clus_true = np.array(list(map(list, observations[:, 3])))[:, 0]
+
+                            clus_inf = clus_inf[-num_NMI_last:]
+                            clus_true = clus_true[-num_NMI_last:]
+
+                            score = NMI(clus_true, clus_inf)
+
+                            arrResR[i_r].append(score)
+                            print(score)
+
+                    arrResR = np.array(arrResR)
+                    for i_r, r in enumerate(arrR):
+                        if not np.isnan(arrResR[i_r]).all():
+                            if i_r != index_req1:
+                                arrResR[i_r] -= arrResR[index_req1]
+                            meanTabNMI = np.nanmean(arrResR[i_r])
+                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            matRes[i_r, i_overlap_voc, i_overlap_temp] = meanTabNMI
+                            matStd[i_r, i_overlap_voc, i_overlap_temp] = stdTabNMI
+
+                    scale=6
+                    plt.figure(figsize=(4*scale, 1*scale))
+                    for i_r, r in enumerate(arrR):
+
+                        plt.subplot(1, 4, i_r+1)
+                        lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
+                        lab_y = [str(lab_overlap_temp[idx]) for idx in lab_overlap_temp]
+
+                        if i_r == index_req1:
+                            sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
+                                        cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
+                            plt.title(f"(reference) r = {r}")
+                        else:
+                            sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="RdBu_r", square=True, annot=True,
+                                        cbar_kws={"label":r"$\Delta$ NMI", "shrink": 0.6}, vmin=-1, vmax=1)
+                            plt.title(f"r = {r}")
+
+                        plt.gca().invert_yaxis()
+                        plt.xlabel("Textual overlap")
+                        plt.ylabel("Temporal overlap")
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
         # Num part vs num sample
         def XP6(folder, output_folder):
             folder += "XP6/"
             output_folder += "XP6/"
+            results_folder = output_folder.replace("output/", "results/")
+            ensureFolder(results_folder)
 
             num_part = [1, 2, 4, 8, 12, 16, 20, 25]
             num_sample = np.logspace(1, 5, 5)
             arrR = [1.]
 
-            t = time.time()
-            i = 0
-            nbRunsTot = nbDS*len(num_part)*len(num_sample)*len(arrR)
+            matRes = np.empty((len(arrR), len(num_part), len(num_sample)))
+            matRes[:] = np.nan
+            matStd = np.empty((len(arrR), len(num_part), len(num_sample)))
+            matStd[:] = np.nan
+            lab_num_part = {}
+            lab_num_sample = {}
 
-            for DS in range(nbDS):
+            nbDS = 2  # ======================================================================================================
 
-                params = (folder, DS, nbClasses, num_obs, multivariate,
-                          overlap_voc, overlap_temp, perc_rand,
-                          voc_per_class, words_per_obs, theta0,
-                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                success = generate(params)
-                if success==-1: continue
-                name_ds, observations, vocabulary_size = getData(params)
-                name_ds = name_ds.replace("_events.txt", "")
 
-                for particle_num in num_part:
-                    for sample_num in num_sample:
-                        sample_num = int(sample_num)
-                        particle_num = int(particle_num)
 
-                        for r in arrR:
-                            print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
+            for i_particle_num,particle_num in enumerate(num_part):
+                for i_sample_num,sample_num in enumerate(num_sample):
+                    sample_num = int(sample_num)
+                    particle_num = int(particle_num)
+
+                    lab_num_part[i_particle_num] = str(particle_num)
+                    lab_num_sample[i_sample_num] = str(sample_num)
+
+                    arrResR = [[] for _ in range(len(arrR))]
+                    for DS in range(nbDS):
+
+                        params = (folder, DS, nbClasses, num_obs, multivariate,
+                                  overlap_voc, overlap_temp, perc_rand,
+                                  voc_per_class, words_per_obs, theta0,
+                                  lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                        try:
+                            name_ds, observations, vocabulary_size = getData(params)
+                            name_ds = name_ds.replace("_events.txt", "")
+                        except Exception as e:
+                            print(f"Data not found - {e}")
+                            continue
+
+
+
+                        for i_r, r in enumerate(arrR):
+                            print(f"DS {DS} - particles = {particle_num} - sample num = {sample_num} - r = {r}")
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
                                           f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                    eval_on_go=eval_on_go)
+                            try:
+                                DHP = read_particles(output_folder, name_output, get_clusters=False)
+                            except Exception as e:
+                                print(f"Output not found - {e}")
+                                arrResR[i_r].append(np.nan)
+                                continue
 
-                            i += 1
-                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                            selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
+                            clus_inf = selected_particle.docs2cluster_ID
+                            clus_true = np.array(list(map(list, observations[:, 3])))[:, 0]
+
+                            clus_inf = clus_inf[-num_NMI_last:]
+                            clus_true = clus_true[-num_NMI_last:]
+
+                            score = NMI(clus_true, clus_inf)
+
+                            arrResR[i_r].append(score)
+                            print(score)
+
+
+                    arrResR = np.array(arrResR)
+                    for i_r, r in enumerate(arrR):
+                        if not np.isnan(arrResR[i_r]).all():
+                            meanTabNMI = np.nanmean(arrResR[i_r])
+                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            matRes[i_r, i_particle_num, i_sample_num] = meanTabNMI
+                            matStd[i_r, i_particle_num, i_sample_num] = stdTabNMI
+
+                    scale=6
+                    plt.figure(figsize=(4*scale, 1*scale))
+                    for i_r, r in enumerate(arrR):
+
+                        plt.subplot(1, 4, i_r+1)
+                        lab_x = [str(lab_num_part[idx]) for idx in lab_num_part]
+                        lab_y = [str(lab_num_sample[idx]) for idx in lab_num_sample]
+
+                        sns.heatmap(np.round(matRes[i_r], 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
+                                    cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
+                        plt.title(f"r = {r}")
+                        plt.gca().invert_yaxis()
+                        plt.xlabel("# particles")
+                        plt.ylabel("# samples")
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
 
 

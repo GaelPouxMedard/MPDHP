@@ -199,10 +199,10 @@ class Dirichlet_Hawkes_Process(object):
 				continue
 			newVec, newPriors = draw_vectors(self.alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
 			newVec = newVec.squeeze()
-			if not self.multivariate:
-				newVec *= 0.
-				newVec += 1e-10
-				newPriors *= 0.
+			# if not self.multivariate:
+			# 	newVec *= 0.
+			# 	newVec += 1e-10
+			# 	newPriors *= 0.
 			particle.clusters[cluster_index].log_priors = particle.clusters[cluster_index].log_priors + newPriors
 
 			particle.clusters[cluster_index].alphas = np.concatenate((particle.clusters[cluster_index].alphas, newVec[:, None, :]), axis=1)
@@ -218,10 +218,10 @@ class Dirichlet_Hawkes_Process(object):
 			return particle
 
 		newVec, newPriors = draw_vectors(self.alpha0, self.sample_num, [0], len(self.reference_time), return_priors=True)
-		if not self.multivariate:
-			newVec *= 0.
-			newVec += 1e-10
-			newPriors *= 0.
+		# if not self.multivariate:
+		# 	newVec *= 0.
+		# 	newVec += 1e-10
+		# 	newPriors *= 0.
 
 		particle.alphas = np.concatenate((particle.alphas, newVec), axis=1)
 		particle.log_priors = particle.log_priors + newPriors
