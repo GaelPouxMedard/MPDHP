@@ -248,7 +248,7 @@ if RW=="0":
         arr_perc_rand = np.linspace(0, 1, 6)
         arrR = np.linspace(0, 3, 16)
 
-        words_per_obs = 5
+        words_per_obs = 20
 
         t = time.time()
         i = 0
