@@ -1,304 +1,476 @@
-import bz2
+import gzip
 import pickle
 import os
-import re
 from utils import *
-from scipy.spatial.distance import jensenshannon
-import multiprocessing
-import tqdm
 import time
+import sys
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import normalized_mutual_info_score as NMI
 
+def ensureFolder(folder):
+    curfol = "./"
+    for fol in folder.split("/")[:-1]:
+        if fol not in os.listdir(curfol) and fol!="":
+            os.mkdir(curfol+fol)
+        curfol += fol+"/"
 
-def loadFit(folder, file, r):
-    try:
-        data = bz2.BZ2File(folder+file, "rb")
-        data = pickle.load(data)
-    except:
-        particles = []
-        with open(folder+file, "r", encoding="utf-8") as f:
-            for line in f.read().replace("\n ", " ").split("\n"):
-                indic = line.split("\t")[0]
-                if indic=="Particle":
-                    try:
-                        particles.append(p)
-                    except:
-                        pass
-                    _, pIter, weight, docs2cluster_ID = line.split("\t")
-                    p = Particle(float(weight))
-                    p.docs2cluster_ID = eval(docs2cluster_ID)
-                elif indic=="Cluster":
-                    _, c, alpha0, alpha, likTxt, word_count = line.replace("\n", "").split("\t")
-                    c = int(c)
-                    alpha0 = np.array(eval(alpha0.replace("    ", " ").replace("   ", " ").replace("  ", " ").replace(" ", ", ")))
-                    alpha = np.array(eval(alpha.replace("    ", " ").replace("   ", " ").replace("  ", " ").replace(" ", ", ")))
-                    likTxt = float(likTxt)
-                    word_count = int(word_count)
-
-                    cluster = Cluster(c, 1, alpha0)
-                    cluster.alpha = alpha
-                    cluster.txtLikelihood = likTxt
-                    cluster.word_count = word_count
-                    p.clusters[c]=cluster
-        data = particles
-
-    return data
-
-def loadData(folder, file, r):
-    news_items = []
-
-    file = file.replace("_particles_compressed.pklbz2", "").replace("_particles.txt", "").replace(f"_r={r}", "").replace(f"_{r}", "")
-    for i in reversed(range(100)):
-        file = file.replace(f"_runDS={i}", "")
-    with open(folder+file+"_events.txt", "r") as f:
+def readObservations(folder, name_ds, output_folder):
+    dataFile = folder+name_ds
+    observations = []
+    wdToIndex, index = {}, 0
+    with open(dataFile, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             l = line.replace("\n", "").split("\t")
-            clusTemp = int(float(l[0]))
-            clusTxt = int(float(l[1]))
-            timestamp = float(l[2])
-            words = l[3].split(",")
+            timestamp = float(l[0])
+            words = l[1].split(",")
+            try:
+                clusTxt = int(float(l[2]))
+                clusTmp = int(float(l[3]))
+            except:
+                clusTxt = None
+                clusTmp = None
             uniquewords, cntwords = np.unique(words, return_counts=True)
+            for un in uniquewords:
+                if un not in wdToIndex:
+                    wdToIndex[un] = index
+                    index += 1
+            uniquewords = [wdToIndex[un] for un in uniquewords]
             uniquewords, cntwords = np.array(uniquewords, dtype=int), np.array(cntwords, dtype=int)
 
-            tup = (i, timestamp, (uniquewords, cntwords), np.sum(cntwords), clusTemp, clusTxt)
-            news_items.append(tup)
-    with open(folder+file+"_lamb0.txt", "r") as f:
-        lamb0 = float(f.read().replace("\n", ""))
+            tup = (i, timestamp, [uniquewords, cntwords], [clusTxt, clusTmp])
+            observations.append(tup)
 
-    means = np.loadtxt(folder+file+"_means.txt")
-    sigs = np.loadtxt(folder+file+"_sigs.txt")
-    try:
-        alpha = np.load(folder+file+"_alpha.npy")
-    except:
-        alpha = None
-
-    return news_items, lamb0, means, sigs, alpha
-
-def getParamsFile(file):
-    nbClasses = int(re.findall("(?<=_nbclasses=)(.*)(?=_lg=)", file)[0])
-    lg = int(re.findall("(?<=_lg=)(.*)(?=_overlapvoc=)", file)[0])
-    overlap_voc = float(re.findall("(?<=_overlapvoc=)(.*)(?=_overlaptemp=)", file)[0])
-    overlap_temp = float(re.findall("(?<=_overlaptemp=)(.*)(?=_r=)", file)[0])
-    r = float(re.findall("(?<=_r=)(.*)(?=_percrandomizedclus=)", file)[0])
-    perc_rand = float(re.findall("(?<=_percrandomizedclus=)(.*)(?=_vocperclass=)", file)[0])
-    vocPerClass = int(re.findall("(?<=_vocperclass=)(.*)(?=_wordsperevent=)", file)[0])
-    wordsPerEvent = int(re.findall("(?<=_wordsperevent=)(.*)(?=_run=)", file)[0])
-    run = int(re.findall("(?<=_run=)(.*)(?=_runDS=)", file)[0])
-    runDS = int(re.findall("(?<=_runDS=)(.*)(?=_particles)", file)[0])
-
-    return nbClasses, lg, overlap_voc, overlap_temp, r, perc_rand, vocPerClass, wordsPerEvent, run, runDS
-
-
-
-def getResultOneFile(args):
-    file, folderFit, folderData, params = args
-    nbClasses, lg, overlap_voc, overlap_temp, r, perc_rand, vocPerClass, wordsPerEvent, run, runDS = params
-    try:
-        news_items, lamb0, means, sigs, alpha_true = loadData(folderData, file, r)
-        particles = loadFit(folderFit, file, r)
-    except:
-        return ""
-    if len(particles[0].docs2cluster_ID)%1000==2:  # To avoid considering incomplete particles & correspondance len(doc2clusid)=i+1 + on save à i%1000==1
-        return ""
-
-    scoresConfMat = confMat(news_items[:len(particles[0].docs2cluster_ID)+1], particles)
-    scoresCompDist = compDists(news_items, alpha_true, particles, means, sigs)
-    txt = ""
-    for pIter in scoresConfMat:
-        res = scoresConfMat[pIter]
-        resDist = scoresCompDist[pIter]
-        txt += f"{nbClasses, lg, overlap_voc, overlap_temp, r, perc_rand, vocPerClass, wordsPerEvent, run, runDS, pIter}\t{res}\t{resDist}\n"
-
-    return txt
-
-def computeResults():
-    folderFit = "output/Synth/"
-    folderData = "data/Synth/"
-
-    listfiles = os.listdir(folderFit)
-    nbFilesSeen = 0
-    with open("results.txt", "w+") as f_ov:
-        for file in listfiles:
-            nbFilesSeen += 1
-            params = getParamsFile(file)
-            nbClasses, lg, overlap_voc, overlap_temp, r, perc_rand, vocPerClass, wordsPerEvent, run, runDS = params
-            if perc_rand!=0. or run!=0 or runDS != 0:
-                continue
-                pass
-            print(nbFilesSeen*100./len(listfiles), "% -", file)
-            args = file, folderFit, folderData, params
-            txt = getResultOneFile(args)
-            f_ov.write(txt)
-            print(txt.split("\n")[0])
-
-def computeResultsMultiprocess(processes=6, loop=False):
-    folderFit = "output/Synth/"
-    folderData = "data/Synth/"
-
-    filesSeen = []
-    with open("filesSeen.txt", "r") as f:
+    indexToWd = {}
+    with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "r", encoding="utf-8") as f:
         for line in f:
-            filesSeen.append(line.replace("\n", ""))
+            index, wd = line.replace("\n", "").split("\t")
+            wdToIndex[index] = wd
 
-    txtTot = ""
-    with open("results.txt", "a+") as f_ov:
-        while True:
-            print("Computing the metrics")
-            listfiles = os.listdir(folderFit)
-            listfiles = [file for file in listfiles if "_particle" in file]
-            args = [(file, folderFit, folderData, getParamsFile(file)) for file in listfiles if file not in filesSeen]
-            with multiprocessing.Pool(processes=processes) as p:
-                with tqdm.tqdm(total=len(args)) as progress:
-                    for i, res in enumerate(p.imap(getResultOneFile, args)):
-                        txt = res
-                        f_ov.write(txt)
-                        #print(txt.split("\n")[0])
-                        txtTot += txt
-                        if txt != "":
-                            with open("filesSeen.txt", "a+") as f_filesseen:
-                                f_filesseen.write(args[i][0]+"\n")
-                                filesSeen.append(args[i][0])
-                        progress.update()
+    V = len(indexToWd)
+    observations = np.array(observations, dtype=object)
 
-            if not loop:
-                break
-            time.sleep(10)
+    return observations, V, indexToWd
 
-    with open("results_fin.txt", "w+") as f_ov:
-        f_ov.write(txtTot)
+def getData(params):
+    (folder, DS, nbClasses, run_time, multivariate,
+     overlap_voc, overlap_temp, perc_rand,
+     voc_per_class, words_per_obs, theta0,
+     lamb0_poisson, lamb0_classes, alpha0, means, sigs) = params
+
+    name_ds = f"Obs_nbclasses={nbClasses}_lg={run_time}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
+              f"_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"+"_events.txt"
+    output_folder = folder.replace("data/", "output/")
+
+    observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+
+    return name_ds, observations, vocabulary_size
 
 
+def read_particles(folderOut, nameOut, time=-1):
+    if time==-1: txtTime = "_final"
+    else: txtTime = f"_obs={int(time)}"
 
-def confMat(news_events, particles):
-    from sklearn.metrics import homogeneity_completeness_v_measure, normalized_mutual_info_score, adjusted_rand_score
-    scores = {}
-    for pIter, p in enumerate(particles):
-        arrLabsTrueTxt, arrLabsTrueTmp = [], []
-        try:
-            arrLabsTrueTxt, arrLabsTrueTmp = [], []
-            for index, t, _, clusTemp, clusTxt in news_events[:-1]:
-                arrLabsTrueTxt.append(clusTxt)
-                arrLabsTrueTmp.append(clusTemp)
-        except:
-            arrLabsTrueTxt, arrLabsTrueTmp = [], []
-            for index, t, _, _, clusTemp, clusTxt in news_events[:-1]:
-                arrLabsTrueTxt.append(clusTxt)
-                arrLabsTrueTmp.append(clusTemp)
-        arrLabsInf = np.array(p.docs2cluster_ID)
+    with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "rb") as f:
+        DHP = pickle.load(f)
 
-        try:
-            K = len(set(arrLabsInf))
-            NMITxt = normalized_mutual_info_score(arrLabsTrueTxt, arrLabsInf)
-            AdjRandTxt = adjusted_rand_score(arrLabsTrueTxt, arrLabsInf)
-            NMITmp = normalized_mutual_info_score(arrLabsTrueTmp, arrLabsInf)
-            AdjRandTmp = adjusted_rand_score(arrLabsTrueTmp, arrLabsInf)
-            VmeasTxt = homogeneity_completeness_v_measure(arrLabsTrueTxt, arrLabsInf)
-            VmeasTmp = homogeneity_completeness_v_measure(arrLabsTrueTmp, arrLabsInf)
-            LogL = p.log_update_prob
-            #print("K =", K, "\tNMI txt =", NMITxt, "\tNMI tmp =", NMITmp, "\tAdjrand txt =", AdjRandTxt, "\tAdjrand tmp =", AdjRandTmp, "\tVmeas txt =", VmeasTxt, "\tVmeas tmp =", VmeasTmp, "\tLik =", LogL)
-        except Exception as e:
-            print(e)
-            K = np.nan
-            NMITxt = np.nan
-            AdjRandTxt = np.nan
-            NMITmp = np.nan
-            AdjRandTmp = np.nan
-            VmeasTxt = (np.nan, np.nan, np.nan)
-            VmeasTmp = (np.nan, np.nan, np.nan)
-            LogL = np.nan
-            pass
+    dicFilesClus = {}
+    for i in range(len(DHP.particles)):
+        lg = len(DHP.particles[i].files_clusters)
+        for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
+            if file_cluster not in dicFilesClus:
+                dicFilesClus[file_cluster] = read_clusters(file_cluster)
 
-        scores[pIter] = [K, NMITxt, NMITmp, AdjRandTxt, AdjRandTmp, VmeasTxt, VmeasTmp, LogL]
-    return scores
+    for i in range(len(DHP.particles)):
+        lg = len(DHP.particles[i].files_clusters)
+        for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
+            clus = dicFilesClus[file_cluster]
+            DHP.particles[i].clusters[clus_index] = clus
 
-def compDists(news_events, alphaTrue, particles, means, sigs):
-    # news_event = [(i, timestamp, (uniquewords, cntwords), np.sum(cntwords), clusTemp, clusTxt)]
-    dt = np.linspace(0, np.max(means)+3*np.max(sigs), 1000)
-    errTot, divTot = 0., 0.
-    JSTot, divJSTot = 0., 0.
-    avgErrParts = {}
-    BL = np.ones((len(alphaTrue), len(alphaTrue), len(means)))/len(means)
-    JSTotBL, divJSTotBL = 0., 0.
-    for pIter, p in enumerate(particles):
-        try:
-            arrLabsTrueTxt, arrLabsTrueTmp = [], []
-            for index, t, _, clusTemp, clusTxt in news_events[:-1]:
-                arrLabsTrueTxt.append(clusTxt)
-                arrLabsTrueTmp.append(clusTemp)
-        except:
-            arrLabsTrueTxt, arrLabsTrueTmp = [], []
-            for index, t, _, _, clusTemp, clusTxt in news_events[:-1]:
-                arrLabsTrueTxt.append(clusTxt)
-                arrLabsTrueTmp.append(clusTemp)
-        arrLabsInf = np.array(p.docs2cluster_ID)
-
-        absErr, div = 0., 0.
-        un, cnt = np.unique(arrLabsInf, return_counts=True)
-        donotconsider = un[cnt<0]#
-        for cTrue, cInf in zip(arrLabsTrueTmp, arrLabsInf):
-            if cInf in donotconsider:
-                pass
-                continue
-            err = np.sum(np.abs(alphaTrue[cTrue,cTrue] - p.clusters[cInf].alpha))
-            absErr += err
-            div += len(alphaTrue[-1,-1]) # [:-1] bc l'écart sur la dernière valeur est redondant
-
-            distTrue = triggering_kernel(alphaTrue[cTrue,cTrue], means, dt, sigs, donotsum=True)
-            distInf = triggering_kernel(p.clusters[cInf].alpha, means, dt, sigs, donotsum=True)
-            #print(alphaTrue[cTrue,cTrue], p.clusters[cInf].alpha)
-            errJS = jensenshannon(distTrue, distInf)
-            JSTot += errJS
-            divJSTot += 1
-
-            distTrue = triggering_kernel(alphaTrue[cTrue,cTrue], means, dt, sigs, donotsum=True)
-            distInf = triggering_kernel(BL[0, 0], means, dt, sigs, donotsum=True)
-            errJSBL = jensenshannon(distTrue, distInf)
-            JSTotBL += errJSBL
-            divJSTotBL += 1
-
-        errTot += absErr
-        divTot += len(arrLabsInf)*(len(alphaTrue[-1,-1]))
-        '''
-        errClus = []
-        maxc = -1
-        maxl = -1
-        #print(np.unique(np.array(news_events, dtype=object)[:, 4], return_counts=True))
-        clus, cnt = np.unique(p.docs2cluster_ID, return_counts=True)
-        clus = clus[np.argpartition(cnt, -5)[-5:]]
-        cnt = cnt[np.argpartition(cnt, -5)[-5:]]
-        for c in clus:
-            contentClus = np.where(np.array(p.docs2cluster_ID, dtype=int)==int(c))[0]
-            #print(contentClus)
-
-            if len(contentClus)>maxl:
-                maxc = c
-                maxl = len(contentClus)
-            absErr, div = 0., 0.
-            for index in contentClus:
-                err = np.sum(np.abs(alphaTrue[news_events[index][4],news_events[index][4]] - p.clusters[c].alpha))
-                absErr += err
-                div += len(alphaTrue[-1,-1]) # [:-1] bc l'écart sur la dernière valeur est redondant
-
-                distTrue = triggering_kernel(alphaTrue[news_events[index][4],news_events[index][4]], means, dt, sigs, donotsum=True)
-                distInf = triggering_kernel(p.clusters[c].alpha, means, dt, sigs, donotsum=True)
-                errJS = jensenshannon(distTrue, distInf)
-                JSTot += errJS
-                divJSTot += 1
-
-            errTot += absErr
-            divTot += len(contentClus)*(len(alphaTrue[-1,-1]))
-
-            errClus.append((len(contentClus), absErr/(div+1e-20)))
-            '''
-        if divTot != 0 and pIter==0 and False:
-            print("Particle", pIter, "Err", errTot/divTot, JSTot/divJSTot, JSTotBL/divJSTotBL, len(p.clusters))#, errClus, alphaTrue[0,0], alphaTrue[1,1], p.clusters[maxc].alpha)
-        MAE = errTot/(divTot+1e-20)
-        MJS = JSTot/(divJSTot+1e-20)
-        MJSBL = JSTotBL/(divJSTotBL+1e-20)
-        avgErrParts[pIter] = (MAE, MJS, MJSBL)
-
-    return avgErrParts
+    return DHP
 
 
-if __name__ == "__main__":
-    pass
+def read_clusters(file_cluster):
+    file_cluster = "temp/MPDHP/"+file_cluster  # ==================================================================================================== REMOVEEEEEEEEEEEEEEEEEEEEEEEE
 
+    with gzip.open(file_cluster, "rb") as f:
+        cluster = pickle.load(f)
+
+    return cluster
+
+
+def plot_heatmap(mat, labx, laby, cbar_lab):
+    sns.heatmap(mat, xticklabels=labx, yticklabels=laby, cmap="afmhot_r", square=True, annot=True,
+                cbar_kws={"label":cbar_lab})
+
+
+
+if __name__=="__main__":
+    try:
+        RW = sys.argv[1]
+        XP = sys.argv[2]
+    except:
+        RW = "0"
+        XP = "1"
+
+    plotFolder = "results/"
+
+
+    if RW=="0":
+        if True:
+            nbClasses = 2
+            num_obs = 50000
+
+            overlap_voc = 0.2  # Proportion of voc in common between a clusters and its direct neighbours
+            overlap_temp = 0.2  # Overlap between the kernels of the simulating process
+            perc_rand = 0.  # Percentage of events to which assign random textual cluster
+
+            voc_per_class = 1000  # Number of words available for each cluster
+            words_per_obs = 5  # Twitter or headlines typically have few named entities
+
+            lamb0_poisson = 0.01  # Cannot be inferred
+            lamb0_classes = 0.1  # Cannot be inferred
+            theta0 = 10.  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
+            alpha0 = 1.  # Uniform beta or Dirichlet prior
+            means = np.array([3, 5, 7, 11, 13])
+            sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+
+            arrR = [1., 0., 0.5, 1.5]
+            nbDS = 10
+            sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
+            particle_num = 10  # Like 10 simultaneous runs
+            multivariate = True
+            printRes = True
+            eval_on_go = True
+
+            folder = "data/Synth/"
+            output_folder = "output/Synth/"
+            folder = "temp/MPDHP/data/Synth/"
+            output_folder = "temp/MPDHP/output/Synth/"
+
+        # Overlap voc vs overlap temp
+        def XP1(folder, output_folder):
+            folder += "XP1/"
+            output_folder += "XP1/"
+
+            overlaps_voc = np.linspace(0, 1, 6)
+            overlaps_temp = np.linspace(0, 1, 6)
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
+
+            matRes = np.zeros((len(arrR), len(overlaps_voc), len(overlaps_temp)))-1
+            matStd = np.zeros((len(arrR), len(overlaps_voc), len(overlaps_temp)))
+            lab_overlap_voc = {}
+            lab_overlap_temp = {}
+            for i_r, r in enumerate(arrR):
+                if r < 0.4 or r > 1.1: continue  # =========================================== REMOVE MEEEEEEEEEEEEEEEEEEEEEEEEEE
+                for i_overlap_voc, overlap_voc in enumerate(sorted(overlaps_voc)):
+                    for i_overlap_temp, overlap_temp in enumerate(sorted(overlaps_temp)):
+                        overlap_voc = np.round(overlap_voc, 2)
+                        overlap_temp = np.round(overlap_temp, 2)
+
+                        lab_overlap_voc[i_overlap_voc] = str(overlap_voc)
+                        lab_overlap_temp[i_overlap_temp] = str(overlap_temp)
+
+                        tabNMI = []
+                        prevclusinf = None
+                        for DS in range(nbDS):
+
+                            params = (folder, DS, nbClasses, num_obs, multivariate,
+                                      overlap_voc, overlap_temp, perc_rand,
+                                      voc_per_class, words_per_obs, theta0,
+                                      lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                            try:
+                                name_ds, observations, vocabulary_size = getData(params)
+                                name_ds = name_ds.replace("_events.txt", "")
+                            except Exception as e:
+                                print(f"Data not found - {e}")
+                                continue
+
+                            print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            try:
+                                print(output_folder, name_output)
+                                DHP = read_particles(output_folder, name_output)
+                            except Exception as e:
+                                print(f"Output not found - {e}")
+                                continue
+
+                            clus_true = np.array(list(map(list, observations[:, 3])))[:, 0]
+                            selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
+                            clus_inf = selected_particle.docs2cluster_ID
+
+                            if prevclusinf is not None:
+                                print(np.isclose(clus_true, prevclusinf).all())
+                            prevclusinf = clus_true.copy()
+                            print(clus_true[:20])
+                            print(clus_inf[:20])
+                            print()
+                            score = NMI(clus_true, clus_inf)
+                            tabNMI.append(score)
+                            print(score)
+
+                            i += 1
+                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+                        if len(tabNMI) != 0:
+                            meanTabNMI = np.mean(tabNMI)
+                            stdTabNMI = np.std(tabNMI)
+                            matRes[i_r, i_overlap_voc, i_overlap_temp] = meanTabNMI
+                            matStd[i_r, i_overlap_voc, i_overlap_temp] = stdTabNMI
+
+        # nbClasses vs lamb0
+        def XP2(folder, output_folder):
+            folder += "XP2/"
+            output_folder += "XP2/"
+
+            arrNbClasses = list(range(2, 10))
+            arrLambPoisson = np.logspace(-4, 1, 6)
+            arrR = [1.]
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(arrNbClasses)*len(arrLambPoisson)*len(arrR)
+
+            num_obs = 100000
+            for DS in range(nbDS):
+                for nbClasses in arrNbClasses:
+                    for lamb0_poisson in arrLambPoisson:
+                        lamb0_poisson = np.round(lamb0_poisson, 5)
+                        nbClasses = int(nbClasses)
+
+                        params = (folder, DS, nbClasses, num_obs, multivariate,
+                                  overlap_voc, overlap_temp, perc_rand,
+                                  voc_per_class, words_per_obs, theta0,
+                                  lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                        success = generate(params)
+                        if success==-1: continue
+                        name_ds, observations, vocabulary_size = getData(params)
+                        name_ds = name_ds.replace("_events.txt", "")
+
+                        for r in arrR:
+                            print(f"DS {DS} - lamb0_poisson = {lamb0_poisson} - nbClasses = {nbClasses} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                    eval_on_go=eval_on_go)
+
+                            i += 1
+                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+        # Words per obs vs overlap voc
+        def XP3(folder, output_folder):
+            folder += "XP3/"
+            output_folder += "XP3/"
+
+            arr_words_per_obs = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
+            arr_overlap_voc = np.linspace(0, 1, 6)
+            arrR = [1.]
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(arr_words_per_obs)*len(arr_overlap_voc)*len(arrR)
+
+            for DS in range(nbDS):
+                for words_per_obs in arr_words_per_obs:
+                    for overlap_voc in arr_overlap_voc:
+                        words_per_obs = int(words_per_obs)
+                        overlap_voc = np.round(overlap_voc, 3)
+
+                        params = (folder, DS, nbClasses, num_obs, multivariate,
+                                  overlap_voc, overlap_temp, perc_rand,
+                                  voc_per_class, words_per_obs, theta0,
+                                  lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                        success = generate(params)
+                        if success==-1: continue
+                        name_ds, observations, vocabulary_size = getData(params)
+                        name_ds = name_ds.replace("_events.txt", "")
+
+                        for r in arrR:
+                            print(f"DS {DS} - words per obs = {words_per_obs} - overlap_voc = {overlap_voc} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                    eval_on_go=eval_on_go)
+
+
+                            i += 1
+                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+        # Perc decorr vs r
+        def XP4(folder, output_folder):
+            folder += "XP4/"
+            output_folder += "XP4/"
+
+            arr_perc_rand = np.linspace(0, 1, 6)
+            arrR = np.linspace(0, 3, 16)
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(arr_perc_rand)*len(arrR)
+
+            for DS in range(nbDS):
+                for perc_rand in arr_perc_rand:
+                    perc_rand = np.round(perc_rand, 2)
+
+                    params = (folder, DS, nbClasses, num_obs, multivariate,
+                              overlap_voc, overlap_temp, perc_rand,
+                              voc_per_class, words_per_obs, theta0,
+                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                    success = generate(params)
+                    if success==-1: continue
+                    name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
+
+                    for r in arrR:
+                        print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
+                        r = np.round(r, 2)
+
+                        name_output = f"{name_ds}_r={r}" \
+                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                      f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                eval_on_go=eval_on_go)
+
+
+                        i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+        # Univariate
+        def XP5(folder, output_folder):
+            folder += "XP5/"
+            output_folder += "XP5/"
+
+            overlaps_voc = np.linspace(0, 1, 6)
+            overlaps_temp = np.linspace(0, 1, 6)
+            multivariate = False
+            lamb0_classes = 0.15  # Slightly higher to avoid gaps in Hawkes process
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
+
+            for DS in range(nbDS):
+                for overlap_voc in overlaps_voc:
+                    for overlap_temp in overlaps_temp:
+                        overlap_voc = np.round(overlap_voc, 1)
+                        overlap_temp = np.round(overlap_temp, 1)
+
+                        params = (folder, DS, nbClasses, num_obs, multivariate,
+                                  overlap_voc, overlap_temp, perc_rand,
+                                  voc_per_class, words_per_obs, theta0,
+                                  lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                        success = generate(params)
+                        if success==-1: continue
+                        name_ds, observations, vocabulary_size = getData(params)
+                        name_ds = name_ds.replace("_events.txt", "")
+
+                        for r in arrR:
+                            print(f"DS {DS} - Univariate - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                    eval_on_go=eval_on_go)
+
+                            i += 1
+                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+        # Num part vs num sample
+        def XP6(folder, output_folder):
+            folder += "XP6/"
+            output_folder += "XP6/"
+
+            num_part = [1, 2, 4, 8, 12, 16, 20, 25]
+            num_sample = np.logspace(1, 5, 5)
+            arrR = [1.]
+
+            t = time.time()
+            i = 0
+            nbRunsTot = nbDS*len(num_part)*len(num_sample)*len(arrR)
+
+            for DS in range(nbDS):
+
+                params = (folder, DS, nbClasses, num_obs, multivariate,
+                          overlap_voc, overlap_temp, perc_rand,
+                          voc_per_class, words_per_obs, theta0,
+                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                success = generate(params)
+                if success==-1: continue
+                name_ds, observations, vocabulary_size = getData(params)
+                name_ds = name_ds.replace("_events.txt", "")
+
+                for particle_num in num_part:
+                    for sample_num in num_sample:
+                        sample_num = int(sample_num)
+                        particle_num = int(particle_num)
+
+                        for r in arrR:
+                            print(f"DS {DS} - Univariate - particles = {particle_num} - sample num = {sample_num} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
+                                    eval_on_go=eval_on_go)
+
+                            i += 1
+                            print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                                  f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+
+
+        if XP=="1":
+            XP1(folder, output_folder)
+        if XP=="2":
+            XP2(folder, output_folder)
+        if XP=="3":
+            XP3(folder, output_folder)
+        if XP=="4":
+            XP4(folder, output_folder)
+        if XP=="5":
+            XP5(folder, output_folder)
+        if XP=="6":
+            XP6(folder, output_folder)

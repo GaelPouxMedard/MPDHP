@@ -11,9 +11,6 @@ import os
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['font.family'] = 'Calibri'
 
-seed = 111126
-np.random.seed(seed)
-
 
 def ensureFolder(folder):
     curfol = "./"
@@ -48,23 +45,10 @@ def simulHawkes(lamb0_poisson, lamb0_classes, alpha, means, sigs, num_obs=1000):
             tf = TimeFunction((t_values, y_values), inter_mode=TimeFunction.InterConstRight, dt=maxdt/100)
             kernels[c][c2] = HawkesKernelTimeFunc(tf)
 
-
-    # poisson = SimuPoissonProcess(lamb0_poisson, max_jumps=nbClasses-1, seed=seed)  # nbClasses-1 bc we begin at 0
-    # poisson.simulate()
-    # underlying_poisson = [0]+poisson.timestamps
-    # print(underlying_poisson)
-    # t_values = np.linspace(0, run_time, 1000)
-    # intensity_functions = []
-    # for t_start in underlying_poisson:
-    #     bg = np.ones((len(t_values)))*lamb0_classes
-    #     bg[t_values<t_start] = -1e20
-    #     tf = TimeFunction((t_values, bg), inter_mode=TimeFunction.InterConstRight)
-    #     intensity_functions.append(tf)
-    # baseline = intensity_functions
     baseline = [lamb0_classes for _ in range(nbClasses)]
 
 
-    hawkes = SimuHawkes(force_simulation=True, baseline=baseline, max_jumps=num_obs, verbose=False, seed=seed+5)
+    hawkes = SimuHawkes(force_simulation=True, baseline=baseline, max_jumps=num_obs, verbose=False)
     hawkes.threshold_negative_intensity()
 
     for c in range(nbClasses):
