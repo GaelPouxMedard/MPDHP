@@ -45,6 +45,7 @@ def simulHawkes(lamb0_poisson, lamb0_classes, alpha, means, sigs, num_obs=1000):
             tf = TimeFunction((t_values, y_values), inter_mode=TimeFunction.InterConstRight, dt=maxdt/100)
             kernels[c][c2] = HawkesKernelTimeFunc(tf)
 
+
     baseline = [lamb0_classes for _ in range(nbClasses)]
 
 
