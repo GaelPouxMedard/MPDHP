@@ -87,7 +87,16 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
             voc_clusters = [np.array(list(range(int(voc_per_class))), dtype=int) + c*voc_per_class for c in range(nbClasses)]
 
             probs_final = probs
-            if overlap_voc is not None:
+            if overlap_voc>=1-0.001:
+                probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
+                for c in range(nbClasses):
+                    probs_temp[c][voc_clusters[c]] = probs[c]
+
+                probs_final = []
+                for c in range(nbClasses):
+                    probs_final.append(probs_temp[0][voc_clusters[0]])
+
+            elif overlap_voc is not None:
                 overlap=-1
                 probs_temp = None
                 while overlap<overlap_voc:
