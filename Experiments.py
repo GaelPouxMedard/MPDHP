@@ -114,8 +114,17 @@ if RW=="0":
         nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
 
         for DS in range(nbDS):
-            for overlap_voc in overlaps_voc:
-                for overlap_temp in overlaps_temp:
+            for overlap_temp in overlaps_temp:
+                params = (folder, DS, nbClasses, num_obs, multivariate,
+                          overlaps_voc, overlap_temp, perc_rand,
+                          voc_per_class, words_per_obs, theta0,
+                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                success = generate(params)
+                if success==-1:
+                    continue
+
+                for overlap_voc in overlaps_voc:
                     overlap_voc = np.round(overlap_voc, 2)
                     overlap_temp = np.round(overlap_temp, 2)
 
@@ -124,9 +133,10 @@ if RW=="0":
                               voc_per_class, words_per_obs, theta0,
                               lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                    success = generate(params)
-                    if success==-1: continue
-                    name_ds, observations, vocabulary_size = getData(params)
+                    try:
+                        name_ds, observations, vocabulary_size = getData(params)
+                    except:
+                        continue
                     name_ds = name_ds.replace("_events.txt", "")
 
                     for r in arrR:
@@ -300,8 +310,17 @@ if RW=="0":
         nbRunsTot = nbDS*len(overlaps_voc)*len(overlaps_temp)*len(arrR)
 
         for DS in range(nbDS):
-            for overlap_voc in overlaps_voc:
-                for overlap_temp in overlaps_temp:
+            for overlap_temp in overlaps_temp:
+                params = (folder, DS, nbClasses, num_obs, multivariate,
+                          overlaps_voc, overlap_temp, perc_rand,
+                          voc_per_class, words_per_obs, theta0,
+                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                success = generate(params)
+                if success==-1:
+                    continue
+
+                for overlap_voc in overlaps_voc:
                     overlap_voc = np.round(overlap_voc, 1)
                     overlap_temp = np.round(overlap_temp, 1)
 
@@ -310,9 +329,10 @@ if RW=="0":
                               voc_per_class, words_per_obs, theta0,
                               lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                    success = generate(params)
-                    if success==-1: continue
-                    name_ds, observations, vocabulary_size = getData(params)
+                    try:
+                        name_ds, observations, vocabulary_size = getData(params)
+                    except:
+                        continue
                     name_ds = name_ds.replace("_events.txt", "")
 
                     for r in arrR:

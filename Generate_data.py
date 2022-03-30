@@ -288,16 +288,25 @@ def generate(params):
     nb_rand = int(perc_rand*len(events))
     events[np.random.randint(0, len(events), nb_rand), 1] = np.random.randint(0, nbClasses, nb_rand)  # Shuffle clusters
 
-    # Generate text associated with textual clusters
-    arrtxt, success = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
-    if success == -1:
-        print(f"Textual overlap of {overlap_voc} too hard to compute")
-        return -1
+    try:
+        overlaps_voc = overlap_voc.copy()
+    except:
+        overlaps_voc = [overlap_voc]
+    s = int(np.random.random()*1000)
 
+    for overlap_voc in overlaps_voc:
+        np.random.seed(s)
+        # Generate text associated with textual clusters
+        arrtxt, success = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
-    name = f"Obs_nbclasses={nbClasses}_lg={num_obs}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
-    save(folder, name, events, arrtxt, lamb0_poisson, lamb0_classes, means, sigs, alpha)
+        if success == -1:
+            print(f"Textual overlap of {overlap_voc} too hard to compute")
+            if len(overlaps_voc)==1:
+                return -1
+
+        name = f"Obs_nbclasses={nbClasses}_lg={num_obs}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}_percrandomizedclus={perc_rand}_vocperclass={voc_per_class}_wordsperevent={words_per_obs}_DS={DS}"
+        save(folder, name, events, arrtxt, lamb0_poisson, lamb0_classes, means, sigs, alpha)
 
     return 0
 
