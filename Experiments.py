@@ -115,6 +115,8 @@ if RW=="0":
 
         for DS in range(nbDS):
             for overlap_temp in overlaps_temp:
+                overlap_temp = np.round(overlap_temp, 2)
+                overlaps_voc = np.round(overlaps_voc, 2)
                 params = (folder, DS, nbClasses, num_obs, multivariate,
                           overlaps_voc, overlap_temp, perc_rand,
                           voc_per_class, words_per_obs, theta0,
@@ -126,7 +128,6 @@ if RW=="0":
 
                 for overlap_voc in overlaps_voc:
                     overlap_voc = np.round(overlap_voc, 2)
-                    overlap_temp = np.round(overlap_temp, 2)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
                               overlap_voc, overlap_temp, perc_rand,
@@ -311,6 +312,8 @@ if RW=="0":
 
         for DS in range(nbDS):
             for overlap_temp in overlaps_temp:
+                overlap_temp = np.round(overlap_temp, 2)
+                overlaps_voc = np.round(overlaps_voc, 2)
                 params = (folder, DS, nbClasses, num_obs, multivariate,
                           overlaps_voc, overlap_temp, perc_rand,
                           voc_per_class, words_per_obs, theta0,
@@ -321,8 +324,7 @@ if RW=="0":
                     continue
 
                 for overlap_voc in overlaps_voc:
-                    overlap_voc = np.round(overlap_voc, 1)
-                    overlap_temp = np.round(overlap_temp, 1)
+                    overlap_voc = np.round(overlap_voc, 2)
 
                     params = (folder, DS, nbClasses, num_obs, multivariate,
                               overlap_voc, overlap_temp, perc_rand,
