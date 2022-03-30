@@ -69,19 +69,19 @@ try:
     XP = sys.argv[2]
 except:
     RW = "0"
-    XP = "5"
+    XP = "1"
 
 
 if RW=="0":
     nbClasses = 2
-    num_obs = 50000
+    num_obs = 5000
 
     overlap_voc = 0.2  # Proportion of voc in common between a clusters and its direct neighbours
     overlap_temp = 0.2  # Overlap between the kernels of the simulating process
     perc_rand = 0.  # Percentage of events to which assign random textual cluster
 
     voc_per_class = 1000  # Number of words available for each cluster
-    words_per_obs = 5  # Twitter or headlines typically have few named entities
+    words_per_obs = 20  # Twitter or headlines typically have few named entities
 
     lamb0_poisson = 0.01  # Cannot be inferred
     lamb0_classes = 0.1  # Cannot be inferred
@@ -159,7 +159,6 @@ if RW=="0":
         i = 0
         nbRunsTot = nbDS*len(arrNbClasses)*len(arrLambPoisson)*len(arrR)
 
-        num_obs = 100000
         for DS in range(nbDS):
             for nbClasses in arrNbClasses:
 
@@ -200,7 +199,7 @@ if RW=="0":
         folder += "XP3/"
         output_folder += "XP3/"
 
-        arr_words_per_obs = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
+        arr_words_per_obs = [2, 5, 8, 10, 15, 20, 25, 30]
         arr_overlap_voc = np.linspace(0, 1, 6)
         arrR = [1.]
 
@@ -248,9 +247,7 @@ if RW=="0":
         output_folder += "XP4/"
 
         arr_perc_rand = np.linspace(0, 1, 6)
-        arrR = np.linspace(0, 3, 16)
-
-        words_per_obs = 10
+        arrR = np.linspace(0, 7, 15)
 
         t = time.time()
         i = 0
