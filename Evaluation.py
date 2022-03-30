@@ -2,14 +2,15 @@ import gzip
 import pickle
 import os
 
-import numpy as np
-
 from utils import *
-import time
 import sys
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import normalized_mutual_info_score as NMI
+from wordcloud import WordCloud
+import multidict as multidict
+import re
+
 
 def ensureFolder(folder):
     curfol = "./"
@@ -28,8 +29,8 @@ def readObservations(folder, name_ds, output_folder):
             timestamp = float(l[0])
             words = l[1].split(",")
             try:
-                clusTxt = int(float(l[2]))
-                clusTmp = int(float(l[3]))
+                clusTmp = int(float(l[2]))  # See generate data/save() -> temporal cluster saved before textual
+                clusTxt = int(float(l[3]))
             except:
                 clusTxt = None
                 clusTmp = None
@@ -44,11 +45,15 @@ def readObservations(folder, name_ds, output_folder):
             tup = (i, timestamp, [uniquewords, cntwords], [clusTxt, clusTmp])
             observations.append(tup)
 
+            if 'Covid' in dataFile and i>10000 and True:  # ============================================
+                print("BROKEN ===")
+                break
+
     indexToWd = {}
     with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "r", encoding="utf-8") as f:
         for line in f:
             index, wd = line.replace("\n", "").split("\t")
-            wdToIndex[index] = wd
+            indexToWd[int(index)] = wd
 
     V = len(indexToWd)
     observations = np.array(observations, dtype=object)
@@ -69,13 +74,17 @@ def getData(params):
 
     return name_ds, observations, vocabulary_size
 
-
-def read_particles(folderOut, nameOut, time=-1, get_clusters=False):
+def read_particles(folderOut, nameOut, time=-1, get_clusters=False, only_pop_clus=False):
     if time==-1: txtTime = "_final"
     else: txtTime = f"_obs={int(time)}"
 
     with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "rb") as f:
         DHP = pickle.load(f)
+
+    popClus, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
+    selected_clus = [clus for _, clus in sorted(zip(cnt, popClus), reverse=True)][:20]
+    print(sorted(cnt, reverse=True))
+    #pause()
 
     if get_clusters:
         dicFilesClus = {}
@@ -83,24 +92,53 @@ def read_particles(folderOut, nameOut, time=-1, get_clusters=False):
             lg = len(DHP.particles[i].files_clusters)
             for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
                 if file_cluster not in dicFilesClus:
-                    dicFilesClus[file_cluster] = read_clusters(file_cluster)
+                    if (clus_index in selected_clus and only_pop_clus) or not only_pop_clus:
+                        dicFilesClus[file_cluster] = read_clusters(file_cluster)
 
         for i in range(len(DHP.particles)):
             lg = len(DHP.particles[i].files_clusters)
             for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
-                clus = dicFilesClus[file_cluster]
-                DHP.particles[i].clusters[clus_index] = clus
+                if (clus_index in selected_clus and only_pop_clus) or not only_pop_clus:
+                    clus = dicFilesClus[file_cluster]
+                    DHP.particles[i].clusters[clus_index] = clus
 
     return DHP
 
-
 def read_clusters(file_cluster):
-    file_cluster = "temp/MPDHP/"+file_cluster  # ==================================================================================================== REMOVEEEEEEEEEEEEEEEEEEEEEEEE
-
     with gzip.open(file_cluster, "rb") as f:
         cluster = pickle.load(f)
 
     return cluster
+
+
+def getFrequencyDictForText(words):
+    fullTermsDict = multidict.MultiDict()
+    tmpDict = {}
+
+    # making dict for counting frequencies
+    for text in words:
+        if re.match("a|the|an|to|in|for|of|or|by|with|is|on|that|be", text):
+            continue
+        val = tmpDict.get(text, 0)
+        tmpDict[text.lower()] = val + 1
+    for key in tmpDict:
+        fullTermsDict.add(key, tmpDict[key])
+    return fullTermsDict
+
+def makeWordCloud(dictWordsFreq):
+    #alice_mask = np.array(Image.open("alice_mask.png"))
+
+    x, y = np.ogrid[:1000, :1000]
+    mask = (x - 500) ** 2 + (y - 500) ** 2 > 500 ** 2
+    mask = 255 * mask.astype(int)
+    wc = WordCloud(background_color="white", max_words=500, mask=mask, colormap="cividis")
+    # generate word cloud
+    wc.generate_from_frequencies(dictWordsFreq)
+
+    # show
+    plt.imshow(wc, interpolation="bilinear")
+    plt.tight_layout()
+    plt.axis("off")
 
 
 if __name__=="__main__":
@@ -109,10 +147,10 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "0"
-        XP = "1"
+        XP = "4"
 
-    num_NMI_last = 5000
-    norm_err = 0.2
+    num_NMI_last = 5000  # ======================================================================================================
+    norm_err = 0.2  # ======================================================================================================
     nbDS = 2  # ======================================================================================================
 
 
@@ -145,8 +183,6 @@ if __name__=="__main__":
 
             folder = "data/Synth/"
             output_folder = "output/Synth/"
-            folder = "temp/MPDHP/data/Synth/"
-            output_folder = "temp/MPDHP/output/Synth/"
 
         # Overlap voc vs overlap temp
         def XP1(folder, output_folder):
@@ -198,7 +234,7 @@ if __name__=="__main__":
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
-                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
                             try:
@@ -305,7 +341,7 @@ if __name__=="__main__":
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
-                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
                             try:
@@ -374,9 +410,6 @@ if __name__=="__main__":
             lab_arr_words_per_obs = {}
             lab_arr_overlap_voc = {}
 
-
-
-
             for i_words_per_obs,words_per_obs in enumerate(arr_words_per_obs):
                 for i_overlap_voc,overlap_voc in enumerate(arr_overlap_voc):
                     words_per_obs = int(words_per_obs)
@@ -405,7 +438,7 @@ if __name__=="__main__":
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
-                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
                             try:
@@ -466,71 +499,69 @@ if __name__=="__main__":
             arr_perc_rand = np.linspace(0, 1, 6)
             arrR = np.linspace(0, 3, 16)
 
-            words_per_obs = 20  # 5, 10, 20
-
             matRes = np.empty((3, len(arrR), len(arr_perc_rand)))  # 3 = txt, temp, diff
             matRes[:] = np.nan
             matStd = np.empty((3, len(arrR), len(arr_perc_rand)))
             matStd[:] = np.nan
             lab_arr_perc_rand = {}
 
+            for words_per_obs in [1, 2, 3, 5, 10, 20]:
+                for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
+                    perc_rand = np.round(perc_rand, 2)
 
+                    lab_arr_perc_rand[i_perc_rand] = str(perc_rand)
 
-            for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
-                perc_rand = np.round(perc_rand, 2)
-
-                lab_arr_perc_rand[i_perc_rand] = str(perc_rand)
-
-                arrResR_txt = [[] for _ in range(len(arrR))]
-                arrResR_tmp = [[] for _ in range(len(arrR))]
-                arrResR_diff = [[] for _ in range(len(arrR))]
-
-                for DS in range(nbDS):
-                    params = (folder, DS, nbClasses, num_obs, multivariate,
-                              overlap_voc, overlap_temp, perc_rand,
-                              voc_per_class, words_per_obs, theta0,
-                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
-
-                    try:
-                        name_ds, observations, vocabulary_size = getData(params)
-                        name_ds = name_ds.replace("_events.txt", "")
-                    except Exception as e:
-                        print(f"Data not found - {e}")
-                        continue
+                    arrResR_txt = [[] for _ in range(len(arrR))]
+                    arrResR_tmp = [[] for _ in range(len(arrR))]
+                    arrResR_diff = [[] for _ in range(len(arrR))]
 
                     for i_r, r in enumerate(arrR):
-                        print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
                         r = np.round(r, 2)
 
-                        name_output = f"{name_ds}_r={r}" \
-                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
-                                      f"_samplenum={sample_num}_particlenum={particle_num}"
+                        for DS in range(nbDS):
+                            params = (folder, DS, nbClasses, num_obs, multivariate,
+                                      overlap_voc, overlap_temp, perc_rand,
+                                      voc_per_class, words_per_obs, theta0,
+                                      lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                        try:
-                            DHP = read_particles(output_folder, name_output, get_clusters=False)
-                        except Exception as e:
-                            print(f"Output not found - {e}")
-                            arrResR_txt[i_r].append(np.nan)
-                            arrResR_tmp[i_r].append(np.nan)
-                            arrResR_diff[i_r].append(np.nan)
-                            continue
+                            try:
+                                name_ds, observations, vocabulary_size = getData(params)
+                                name_ds = name_ds.replace("_events.txt", "")
+                            except Exception as e:
+                                print(f"Data not found - {e}")
+                                continue
 
-                        selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
-                        clus_inf = selected_particle.docs2cluster_ID
-                        clus_true_txt = np.array(list(map(list, observations[:, 3])))[:, 0]
-                        clus_true_tmp = np.array(list(map(list, observations[:, 3])))[:, 1]
+                            print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
 
-                        clus_inf = clus_inf[-num_NMI_last:]
-                        clus_true_txt = clus_true_txt[-num_NMI_last:]
-                        clus_true_tmp = clus_true_tmp[-num_NMI_last:]
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        score_txt = NMI(clus_true_txt, clus_inf)
-                        score_tmp = NMI(clus_true_tmp, clus_inf)
+                            try:
+                                DHP = read_particles(output_folder, name_output, get_clusters=False)
+                            except Exception as e:
+                                print(f"Output not found - {e}")
+                                arrResR_txt[i_r].append(np.nan)
+                                arrResR_tmp[i_r].append(np.nan)
+                                arrResR_diff[i_r].append(np.nan)
+                                continue
 
-                        arrResR_txt[i_r].append(score_txt)
-                        arrResR_tmp[i_r].append(score_tmp)
-                        arrResR_diff[i_r].append(score_txt-score_tmp)
-                        print(score_txt-score_tmp)
+                            selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
+                            clus_inf = selected_particle.docs2cluster_ID
+                            clus_true_txt = np.array(list(map(list, observations[:, 3])))[:, 0]
+                            clus_true_tmp = np.array(list(map(list, observations[:, 3])))[:, 1]
+
+                            clus_inf = clus_inf[-num_NMI_last:]
+                            clus_true_txt = clus_true_txt[-num_NMI_last:]
+                            clus_true_tmp = clus_true_tmp[-num_NMI_last:]
+
+                            score_txt = NMI(clus_true_txt, clus_inf)
+                            score_tmp = NMI(clus_true_tmp, clus_inf)
+
+                            arrResR_txt[i_r].append(score_txt)
+                            arrResR_tmp[i_r].append(score_tmp)
+                            arrResR_diff[i_r].append(score_txt-score_tmp)
+                            print(score_txt-score_tmp)
 
 
                         if not np.isnan(arrResR_txt[i_r]).all():
@@ -589,7 +620,7 @@ if __name__=="__main__":
 
 
                         plt.tight_layout()
-                        plt.savefig(results_folder+"heatmap.pdf")
+                        plt.savefig(results_folder+f"heatmap_{words_per_obs}.pdf")
                         plt.close()
 
         # Univariate
@@ -645,7 +676,7 @@ if __name__=="__main__":
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
-                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
                             try:
@@ -759,7 +790,7 @@ if __name__=="__main__":
                             r = np.round(r, 2)
 
                             name_output = f"{name_ds}_r={r}" \
-                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_classes}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                           f"_samplenum={sample_num}_particlenum={particle_num}"
 
                             try:
@@ -827,3 +858,144 @@ if __name__=="__main__":
             XP5(folder, output_folder)
         if XP=="6":
             XP6(folder, output_folder)
+
+    else:
+        lamb0_poisson = 0.01  # Set at ~2sigma
+
+        means = None
+        sigs = None
+
+        try:
+            timescale = sys.argv[3]
+            theta0 = float(sys.argv[4])
+        except:
+            timescale = "min"
+            theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
+
+        if True:
+            if timescale=="min":
+                lamb0_poisson /= 1
+                means = [10*(i) for i in range(9)]  # Until 90min
+                sigs = [5 for i in range(9)]
+            elif timescale=="h":
+                lamb0_poisson /= 10
+                means = [120*(i) for i in range(5)]  # Until 600min
+                sigs = [60 for i in range(5)]
+            elif timescale=="d":
+                lamb0_poisson /= 100
+                means = [60*24*(i) for i in range(7)]  # Until 86400min
+                sigs = [60*24/2 for i in range(7)]
+
+            means = np.array(means)
+            sigs = np.array(sigs)
+
+            alpha0 = 1.  # Uniform beta or Dirichlet prior
+
+            arrR = [0., 0.5, 1., 1.5]
+            sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
+            particle_num = 20  # Like 10 simultaneous runs
+            multivariate = True
+
+            folder = "data/Covid/"
+            output_folder = "output/Covid/"
+
+            lang = XP
+            name_ds = f"COVID-19-events_{lang}.txt"
+            results_folder = f"temp/MPDHP/results/Covid/{lang}/{timescale}/"
+            ensureFolder(results_folder+"Clusters/")
+
+        for r in arrR:
+            r = 1.
+            name_output = f"COVID-19-events_{lang}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+                          f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
+
+            observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+            DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
+
+            print()
+            print(f"-------- {r} ---------")
+
+
+            scale = 4
+            for c in sorted(DHP.particles[0].clusters):
+                if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
+                    continue
+
+                plt.figure(figsize=(1*scale, 3*scale))
+                plt.subplot(3,1,1)
+                plt.title(f"Cluster {c}")
+                wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+                makeWordCloud(wds)
+
+                plt.subplot(3,1,2)
+
+                lg = len(observations)
+                consClus = list(DHP.particles[0].clusters[c].alpha_final.keys())
+
+                active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
+                active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+                unweighted_triggering_kernel = np.zeros((len(consClus), len(means)))
+                div = np.zeros((len(consClus)))
+                indToClus = {int(c): i for i,c in enumerate(consClus)}
+                for i in range(1, len(active_timestamps)):
+                    if active_timestamps[i,0]!=c: continue  # Influence on c only
+                    active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i,1]-np.max(means)-3*np.max(sigs)]
+                    active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
+                    timeseq = active_timestamps_cons[:, 1]
+                    clusseq = active_timestamps_cons[:, 0]
+                    time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
+                    if len(time_intervals)!=0:
+                        RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+                        for (clus, trig) in zip(clusseq, RBF):
+                            indclus = indToClus[int(clus)]
+                            unweighted_triggering_kernel[indclus][0] += trig.dot(DHP.particles[0].clusters[c].alpha_final[clus])  # [0] bc on multiplie déjà
+                            div[indclus] += 1
+
+                unweighted_triggering_kernel = np.sum(unweighted_triggering_kernel, axis=-1)
+                unweighted_triggering_kernel /= (div+1e-20)  # Only Siths deal in absolutes
+                print(unweighted_triggering_kernel)
+                unweighted_triggering_kernel/=(np.max(unweighted_triggering_kernel)+1e-20)
+
+                dt = np.linspace(0, np.max(means)+3*np.max(sigs), 1000)
+                trigger = RBF_kernel(means, dt, sigs)
+                for influencer_clus in DHP.particles[0].clusters[c].alpha_final:
+                    trigger_clus = trigger.dot(DHP.particles[0].clusters[c].alpha_final[influencer_clus])
+                    alpha = unweighted_triggering_kernel[indToClus[influencer_clus]]
+                    if alpha<1e-5: continue
+                    plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=alpha)
+                plt.legend()
+
+
+                plt.subplot(3, 1, 3)
+
+                array_intensity = []
+                array_times = []
+                for t in np.linspace(np.min(active_timestamps[:, 1]), np.max(active_timestamps[:, 1]), 1000):
+                    active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>t-np.max(means)-3*np.max(sigs)]
+                    active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<t]
+                    timeseq = active_timestamps_cons[:, 1]
+                    clusseq = active_timestamps_cons[:, 0]
+                    unweighted_triggering_kernel = np.zeros((len(consClus), len(means)))
+                    if len(timeseq)<=1: continue
+                    time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
+
+                    RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+                    for (clus, trig) in zip(clusseq, RBF):
+                        indclus = indToClus[int(clus)]
+                        unweighted_triggering_kernel[indclus] += trig
+
+                    array_times.append(timeseq[-1])
+                    array_intensity.append(unweighted_triggering_kernel.dot(DHP.particles[0].clusters[c].alpha_final[clus]))
+
+
+                array_intensity = np.array(array_intensity)
+                for influencer_clus in indToClus:
+                    plt.plot(array_times, array_intensity[:, indToClus[influencer_clus]], "-o", markersize=2, label=f"Cluster {influencer_clus}")
+                plt.legend()
+
+
+
+                plt.tight_layout()
+                plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
+                #plt.show()
+                plt.close()

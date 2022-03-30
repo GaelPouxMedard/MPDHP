@@ -162,19 +162,21 @@ if RW=="0":
         num_obs = 100000
         for DS in range(nbDS):
             for nbClasses in arrNbClasses:
+
+                lamb0_poisson = -1
+                params = (folder, DS, nbClasses, num_obs, multivariate,
+                          overlap_voc, overlap_temp, perc_rand,
+                          voc_per_class, words_per_obs, theta0,
+                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                success = generate(params)
+                if success==-1: continue
+                name_ds, observations, vocabulary_size = getData(params)
+                name_ds = name_ds.replace("_events.txt", "")
+
                 for lamb0_poisson in arrLambPoisson:
                     lamb0_poisson = np.round(lamb0_poisson, 5)
                     nbClasses = int(nbClasses)
-
-                    params = (folder, DS, nbClasses, num_obs, multivariate,
-                              overlap_voc, overlap_temp, perc_rand,
-                              voc_per_class, words_per_obs, theta0,
-                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
-
-                    success = generate(params)
-                    if success==-1: continue
-                    name_ds, observations, vocabulary_size = getData(params)
-                    name_ds = name_ds.replace("_events.txt", "")
 
                     for r in arrR:
                         print(f"DS {DS} - lamb0_poisson = {lamb0_poisson} - nbClasses = {nbClasses} - r = {r}")
