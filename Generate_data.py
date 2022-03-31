@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from copy import deepcopy as copy
 
 from tick.hawkes import (SimuHawkes, HawkesKernelTimeFunc, HawkesKernelExp, HawkesEM)
@@ -86,41 +87,34 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
 
             voc_clusters = [np.array(list(range(int(voc_per_class))), dtype=int) + c*voc_per_class for c in range(nbClasses)]
 
-            probs_final = probs
-            if overlap_voc>=1-0.001:
+            overlap=-1
+            probs_temp = None
+            while not (overlap>overlap_voc-0.025 and overlap<overlap_voc+0.025):
+                # Overlap
+                if overlap_voc>=1-0.001 and False:
+                    for c in range(nbClasses):
+                        voc_clusters[c] -= int(c*voc_per_class)
+                elif overlap_voc is not None:
+                    for c in range(nbClasses):
+                        voc_clusters[c] -= int(c)
+
                 probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
                 for c in range(nbClasses):
                     probs_temp[c][voc_clusters[c]] = probs[c]
+                overlap = compute_overlap(list(range(voc_per_class*nbClasses)), probs_temp)
 
-                probs_final = []
-                for c in range(nbClasses):
-                    probs_final.append(probs_temp[0][voc_clusters[0]])
+            probs_final = []
+            for c in range(nbClasses):
+                probs_final.append(probs_temp[c][voc_clusters[c]])
 
-            elif overlap_voc is not None:
-                overlap=-1
-                probs_temp = None
-                while overlap<overlap_voc:
-                    # Overlap
-                    for c in range(nbClasses):
-                        #voc_clusters[c] -= int(c*voc_per_class*overlap_voc)
-                        voc_clusters[c] -= int(c)
-
-                    probs_temp = np.zeros((nbClasses, voc_per_class*nbClasses))
-                    for c in range(nbClasses):
-                        probs_temp[c][voc_clusters[c]] = probs[c]
-                    overlap = compute_overlap(list(range(voc_per_class*nbClasses)), probs_temp)
-
-                probs_final = []
-                for c in range(nbClasses):
-                    probs_final.append(probs_temp[c][voc_clusters[c]])
-
-                # x = np.array(list(range(voc_per_class*nbClasses)))
-                # for c in range(nbClasses):
-                #     plt.plot(x, probs_temp[c])
-                # plt.show()
             break
-        except:
-            print(f"Textual overlap {overlap_voc} hard to reach - Try {tries}")
+        except Exception as e:
+            print(f"Textual overlap {overlap_voc} hard to reach - Try {tries} - {e}")
+
+    # x = np.array(list(range(voc_per_class*nbClasses)))
+    # for c in range(nbClasses):
+    #     plt.plot(x, probs_temp[c])
+    # plt.show()
 
     for c in range(len(voc_clusters)):
         for w in range(len(voc_clusters[c])):
@@ -135,15 +129,17 @@ def simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta
     return arrtxt, 0
 
 def compute_overlap(x, ys):
-    areas = [np.trapz(y, x=x) for y in ys]
     ys = np.array(ys)
-    ysecondmin = np.copy(ys)
-    ysecondmin[ysecondmin==np.max(ysecondmin, axis=0)] = 0.
-    ysecondmin = np.max(ysecondmin, axis=0)
-    areaInter = np.trapz(ysecondmin, x=x)
+    areas = [np.trapz(y, x=x) for y in ys]
+    areasInter = []
+    for iy1, y1 in enumerate(ys):
+        ysecondmin = ys.copy()
+        ysecondmin = np.delete(ysecondmin, iy1, 0)
+        ysecondmin = np.max(ysecondmin, axis=0)
+        areaInter = np.trapz(np.min([ysecondmin, y1], axis=0), x=x)
+        areasInter.append(areaInter)
 
-    #len(areas)*
-    overlap = 2*areaInter/np.sum(areas)
+    overlap = np.sum(areasInter)/np.sum(areas)
 
     return overlap
 
@@ -228,10 +224,19 @@ def generate(params):
     nbTries = 0
     while True:
         alpha = np.zeros((nbClasses, nbClasses, len(means)))
-        for c in range(nbClasses):
-            a = np.random.dirichlet([alpha0]*nbClasses*len(means))
-            a = a.reshape((nbClasses, len(means)))
-            alpha[c]=a
+        if overlap_temp>0.95:
+            alpha0 = 1.
+            for c in range(nbClasses):
+                a = np.array([np.random.dirichlet([alpha0]*len(means))]*nbClasses)
+                a = a.reshape((nbClasses, len(means)))
+                a[0] *= 1.000001  # So equality is not perfect and overlaps compute correctly
+                alpha[c]=a
+        else:
+            alpha0 = np.random.choice(np.logspace(-2, 1, 10))
+            for c in range(nbClasses):
+                a = np.random.dirichlet([alpha0]*nbClasses*len(means))
+                a = a.reshape((nbClasses, len(means)))
+                alpha[c]=a
         alpha = np.array(alpha)
 
         if not multivariate:
@@ -247,13 +252,27 @@ def generate(params):
 
         t = np.linspace(0, np.max(means)+6*np.max(sigs), 1000)
         RBF = RBF_kernel(means, t, sigs)
-        kernels = []
+        array_overlaps = []
         for i in range(len(alpha)):
+            kernels = []
             for j in range(len(alpha[i])):
                 kernels.append(RBF.dot(alpha[i,j]))
-        overlap_temp_temp = compute_overlap(t, kernels)
+            array_overlaps.append(compute_overlap(t, kernels))
+        overlap_temp_temp = np.mean(array_overlaps)  # The average of the overlap of incoming influence over every class
+        # print(overlap_temp_temp)
+
+
         if (overlap_temp_temp>overlap_temp-0.025 and overlap_temp_temp<overlap_temp+0.025) or nbClasses==1:
             print("Overlap temporel", overlap_temp)
+
+            colors = ['b','g','r','c','m','y']*10
+            for i in range(len(alpha)):
+                ktmp = []
+                for j in range(len(alpha[i])):
+                    ktmp.append(RBF.dot(alpha[i,j]))
+                plt.plot(np.transpose(ktmp), c=colors[i])
+            plt.show()
+
             break
         nbTries += 1
         if nbTries>1000000:
@@ -293,10 +312,8 @@ def generate(params):
         overlaps_voc = overlap_voc.copy()
     except:
         overlaps_voc = [overlap_voc]
-    s = int(np.random.random()*1000)
 
     for overlap_voc in overlaps_voc:
-        np.random.seed(s)
         # Generate text associated with textual clusters
         arrtxt, success = simulTxt(events, voc_per_class, nbClasses, overlap_voc, words_per_obs, theta0)
 
@@ -315,18 +332,20 @@ if __name__ == "__main__":
     nbClasses = 3
     num_obs = 5000
 
-    overlap_voc = 0.5  # Proportion of voc in common between a clusters and its direct neighbours
-    overlap_temp = 0.05  # Overlap between the kernels of the simulating process
+    overlap_voc = 0.2  # Proportion of voc in common between a clusters and its direct neighbours
+    overlap_temp = 0.8  # Overlap between the kernels of the simulating process
 
     voc_per_class = 1000  # Number of words available for each cluster
     perc_rand = 0.  # Percentage of events to which assign random textual cluster
-    words_per_obs = 10
+    words_per_obs = 20
 
     means = np.array([3, 5, 7, 11, 13])
     sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+    means = np.array([3, 7, 11])
+    sigs = np.array([1,1,1])
 
 
-    lamb0_poisson = 0.05
+    lamb0_poisson = 0.01
     lamb0_classes = 0.1
     theta0 = 10
     alpha0 = 0.1

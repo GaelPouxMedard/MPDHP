@@ -76,8 +76,8 @@ if RW=="0":
     nbClasses = 2
     num_obs = 5000
 
-    overlap_voc = 0.2  # Proportion of voc in common between a clusters and its direct neighbours
-    overlap_temp = 0.2  # Overlap between the kernels of the simulating process
+    overlap_voc = 0.  # Proportion of voc in common between a clusters and its direct neighbours
+    overlap_temp = 0.  # Overlap between the kernels of the simulating process
     perc_rand = 0.  # Percentage of events to which assign random textual cluster
 
     voc_per_class = 1000  # Number of words available for each cluster
@@ -87,8 +87,8 @@ if RW=="0":
     lamb0_classes = 0.1  # Cannot be inferred
     theta0 = 10.  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001 ; here it's 10 to ease computing the overlap_voc
     alpha0 = 1.  # Uniform beta or Dirichlet prior
-    means = np.array([3, 5, 7, 11, 13])
-    sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+    means = np.array([3, 7, 11])
+    sigs = np.array([1., 1., 1.])
 
     arrR = [1., 0., 0.5, 1.5]
     nbDS = 10
