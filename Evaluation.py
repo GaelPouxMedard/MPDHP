@@ -2,11 +2,13 @@ import gzip
 import pickle
 import os
 
+import numpy as np
 from utils import *
 import sys
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import normalized_mutual_info_score as NMI
+from scipy.stats import sem
 from wordcloud import WordCloud
 import multidict as multidict
 import re
@@ -18,6 +20,9 @@ def ensureFolder(folder):
         if fol not in os.listdir(curfol) and fol!="":
             os.mkdir(curfol+fol)
         curfol += fol+"/"
+
+def nansem(x):
+    return sem(x[~np.isnan(x)])
 
 def readObservations(folder, name_ds, output_folder):
     dataFile = folder+name_ds
@@ -147,9 +152,9 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "0"
-        XP = "4"
+        XP = "1"
 
-    num_NMI_last = 5000  # ======================================================================================================
+    num_NMI_last = 5000000000  # ======================================================================================================
     norm_err = 0.2  # ======================================================================================================
     nbDS = 2  # ======================================================================================================
 
@@ -262,7 +267,7 @@ if __name__=="__main__":
                             if i_r != index_req1:
                                 arrResR[i_r] -= arrResR[index_req1]
                             meanTabNMI = np.nanmean(arrResR[i_r])
-                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            stdTabNMI = nansem(arrResR[i_r])
                             matRes[i_r, i_overlap_voc, i_overlap_temp] = meanTabNMI
                             matStd[i_r, i_overlap_voc, i_overlap_temp] = stdTabNMI
 
@@ -367,7 +372,7 @@ if __name__=="__main__":
                     for i_r, r in enumerate(arrR):
                         if not np.isnan(arrResR[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR[i_r])
-                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            stdTabNMI = nansem(arrResR[i_r])
                             matRes[i_r, i_nbClasses, i_lamb0_poisson] = meanTabNMI
                             matStd[i_r, i_nbClasses, i_lamb0_poisson] = stdTabNMI
 
@@ -464,7 +469,7 @@ if __name__=="__main__":
                     for i_r, r in enumerate(arrR):
                         if not np.isnan(arrResR[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR[i_r])
-                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            stdTabNMI = nansem(arrResR[i_r])
                             matRes[i_r, i_words_per_obs, i_overlap_voc] = meanTabNMI
                             matStd[i_r, i_words_per_obs, i_overlap_voc] = stdTabNMI
 
@@ -505,7 +510,7 @@ if __name__=="__main__":
             matStd[:] = np.nan
             lab_arr_perc_rand = {}
 
-            for words_per_obs in [1, 2, 3, 5, 10, 20]:
+            for words_per_obs in [10, 20]:
                 for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
                     perc_rand = np.round(perc_rand, 2)
 
@@ -566,17 +571,17 @@ if __name__=="__main__":
 
                         if not np.isnan(arrResR_txt[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR_txt[i_r])
-                            stdTabNMI = np.nanstd(arrResR_txt[i_r])
+                            stdTabNMI = nansem(arrResR_txt[i_r])
                             matRes[0, i_r, i_perc_rand] = meanTabNMI
                             matStd[0, i_r, i_perc_rand] = stdTabNMI
                         if not np.isnan(arrResR_tmp[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR_tmp[i_r])
-                            stdTabNMI = np.nanstd(arrResR_tmp[i_r])
+                            stdTabNMI = nansem(arrResR_tmp[i_r])
                             matRes[1, i_r, i_perc_rand] = meanTabNMI
                             matStd[1, i_r, i_perc_rand] = stdTabNMI
                         if not np.isnan(arrResR_diff[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR_diff[i_r])
-                            stdTabNMI = np.nanstd(arrResR_diff[i_r])
+                            stdTabNMI = nansem(arrResR_diff[i_r])
                             matRes[2, i_r, i_perc_rand] = meanTabNMI
                             matStd[2, i_r, i_perc_rand] = stdTabNMI
 
@@ -704,7 +709,7 @@ if __name__=="__main__":
                             if i_r != index_req1:
                                 arrResR[i_r] -= arrResR[index_req1]
                             meanTabNMI = np.nanmean(arrResR[i_r])
-                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            stdTabNMI = nansem(arrResR[i_r])
                             matRes[i_r, i_overlap_voc, i_overlap_temp] = meanTabNMI
                             matStd[i_r, i_overlap_voc, i_overlap_temp] = stdTabNMI
 
@@ -817,7 +822,7 @@ if __name__=="__main__":
                     for i_r, r in enumerate(arrR):
                         if not np.isnan(arrResR[i_r]).all():
                             meanTabNMI = np.nanmean(arrResR[i_r])
-                            stdTabNMI = np.nanstd(arrResR[i_r])
+                            stdTabNMI = nansem(arrResR[i_r])
                             matRes[i_r, i_particle_num, i_sample_num] = meanTabNMI
                             matStd[i_r, i_particle_num, i_sample_num] = stdTabNMI
 
