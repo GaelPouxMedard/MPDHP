@@ -257,6 +257,10 @@ if __name__=="__main__":
                             clus_inf = clus_inf[-num_NMI_last:]
                             clus_true = clus_true[-num_NMI_last:]
 
+                            if len(clus_inf) != len(clus_true):
+                                arrResR[i_r].append(np.nan)
+                                continue
+
                             score = NMI(clus_true, clus_inf)
 
                             arrResR[i_r].append(score)
@@ -363,6 +367,10 @@ if __name__=="__main__":
                             clus_inf = clus_inf[-num_NMI_last:]
                             clus_true = clus_true[-num_NMI_last:]
 
+                            if len(clus_inf) != len(clus_true):
+                                arrResR[i_r].append(np.nan)
+                                continue
+
                             score = NMI(clus_true, clus_inf)
 
                             arrResR[i_r].append(score)
@@ -459,6 +467,10 @@ if __name__=="__main__":
 
                             clus_inf = clus_inf[-num_NMI_last:]
                             clus_true = clus_true[-num_NMI_last:]
+
+                            if len(clus_inf) != len(clus_true):
+                                arrResR[i_r].append(np.nan)
+                                continue
 
                             score = NMI(clus_true, clus_inf)
 
@@ -560,9 +572,12 @@ if __name__=="__main__":
                             clus_true_txt = clus_true_txt[-num_NMI_last:]
                             clus_true_tmp = clus_true_tmp[-num_NMI_last:]
 
-                            print(np.shape(clus_inf))
-                            print(np.shape(clus_true_tmp))
-                            print(np.shape(clus_true_txt))
+
+                            if len(clus_inf) != len(clus_true_txt):
+                                arrResR_txt[i_r].append(np.nan)
+                                arrResR_tmp[i_r].append(np.nan)
+                                arrResR_diff[i_r].append(np.nan)
+                                continue
 
                             score_txt = NMI(clus_true_txt, clus_inf)
                             score_tmp = NMI(clus_true_tmp, clus_inf)
@@ -702,6 +717,10 @@ if __name__=="__main__":
                             clus_inf = clus_inf[-num_NMI_last:]
                             clus_true = clus_true[-num_NMI_last:]
 
+                            if len(clus_inf) != len(clus_true):
+                                arrResR[i_r].append(np.nan)
+                                continue
+
                             score = NMI(clus_true, clus_inf)
 
                             arrResR[i_r].append(score)
@@ -815,6 +834,10 @@ if __name__=="__main__":
 
                             clus_inf = clus_inf[-num_NMI_last:]
                             clus_true = clus_true[-num_NMI_last:]
+
+                            if len(clus_inf) != len(clus_true):
+                                arrResR[i_r].append(np.nan)
+                                continue
 
                             score = NMI(clus_true, clus_inf)
 
