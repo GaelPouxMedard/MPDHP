@@ -265,13 +265,13 @@ def generate(params):
         if (overlap_temp_temp>overlap_temp-0.025 and overlap_temp_temp<overlap_temp+0.025) or nbClasses==1:
             print("Overlap temporel", overlap_temp)
 
-            colors = ['b','g','r','c','m','y']*10
-            for i in range(len(alpha)):
-                ktmp = []
-                for j in range(len(alpha[i])):
-                    ktmp.append(RBF.dot(alpha[i,j]))
-                plt.plot(np.transpose(ktmp), c=colors[i])
-            plt.show()
+            # colors = ['b','g','r','c','m','y']*10
+            # for i in range(len(alpha)):
+            #     ktmp = []
+            #     for j in range(len(alpha[i])):
+            #         ktmp.append(RBF.dot(alpha[i,j]))
+            #     plt.plot(np.transpose(ktmp), c=colors[i])
+            # plt.show()
 
             break
         nbTries += 1
@@ -339,8 +339,6 @@ if __name__ == "__main__":
     perc_rand = 0.  # Percentage of events to which assign random textual cluster
     words_per_obs = 20
 
-    means = np.array([3, 5, 7, 11, 13])
-    sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
     means = np.array([3, 7, 11])
     sigs = np.array([1,1,1])
 
