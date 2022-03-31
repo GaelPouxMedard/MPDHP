@@ -162,14 +162,14 @@ if __name__=="__main__":
     if RW=="0":
         if True:
             nbClasses = 2
-            num_obs = 50000
+            num_obs = 5000
 
             overlap_voc = 0.2  # Proportion of voc in common between a clusters and its direct neighbours
             overlap_temp = 0.2  # Overlap between the kernels of the simulating process
             perc_rand = 0.  # Percentage of events to which assign random textual cluster
 
             voc_per_class = 1000  # Number of words available for each cluster
-            words_per_obs = 5  # Twitter or headlines typically have few named entities
+            words_per_obs = 20  # Twitter or headlines typically have few named entities
 
             lamb0_poisson = 0.01  # Cannot be inferred
             lamb0_classes = 0.1  # Cannot be inferred
@@ -196,8 +196,8 @@ if __name__=="__main__":
             results_folder = output_folder.replace("output/", "results/")
             ensureFolder(results_folder)
 
-            overlaps_voc = np.array([0., 0.2, 0.4, 0.6, 0.8])
-            overlaps_temp = np.array([0.2, 0.4, 0.6, 0.8])
+            overlaps_voc = np.linspace(0, 1, 6)
+            overlaps_temp = np.linspace(0, 1, 6)
 
             matRes = np.empty((len(arrR), len(overlaps_voc), len(overlaps_temp)))
             matRes[:] = np.nan
@@ -316,7 +316,6 @@ if __name__=="__main__":
             lab_arrNbClasses = {}
             lab_arrLambPoisson = {}
 
-            num_obs = 100000
             for i_nbClasses, nbClasses in enumerate(arrNbClasses):
                 for i_lamb0_poisson, lamb0_poisson in enumerate(arrLambPoisson):
                     lamb0_poisson = np.round(lamb0_poisson, 5)
@@ -403,7 +402,7 @@ if __name__=="__main__":
             results_folder = output_folder.replace("output/", "results/")
             ensureFolder(results_folder)
 
-            arr_words_per_obs = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
+            arr_words_per_obs = [2, 5, 8, 10, 15, 20, 25, 30]
             arr_overlap_voc = [0., 0.2, 0.4, 0.6, 0.8]
             arrR = [1.]
 
@@ -502,7 +501,7 @@ if __name__=="__main__":
             ensureFolder(results_folder)
 
             arr_perc_rand = np.linspace(0, 1, 6)
-            arrR = np.linspace(0, 3, 16)
+            arrR = np.linspace(0, 7, 15)
 
             matRes = np.empty((3, len(arrR), len(arr_perc_rand)))  # 3 = txt, temp, diff
             matRes[:] = np.nan
