@@ -81,7 +81,7 @@ if RW=="0":
     perc_rand = 0.  # Percentage of events to which assign random textual cluster
 
     voc_per_class = 1000  # Number of words available for each cluster
-    words_per_obs = 10  # Twitter or headlines typically have few named entities
+    words_per_obs = 20  # Twitter or headlines typically have few named entities
 
     lamb0_poisson = 0.01  # Cannot be inferred
     lamb0_classes = 0.1  # Cannot be inferred
