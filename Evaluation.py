@@ -22,6 +22,7 @@ def ensureFolder(folder):
         curfol += fol+"/"
 
 def nansem(x):
+    x = np.array(x)
     return sem(x[~np.isnan(x)])
 
 def readObservations(folder, name_ds, output_folder):
