@@ -309,6 +309,7 @@ def generate(params):
 
 
     try:
+        len(overlap_voc)
         overlaps_voc = overlap_voc.copy()
     except:
         overlaps_voc = [overlap_voc]
