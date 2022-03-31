@@ -851,6 +851,13 @@ if __name__=="__main__":
 
 
 
+        if XP=="all":
+            XP1(folder, output_folder)
+            XP2(folder, output_folder)
+            XP3(folder, output_folder)
+            XP4(folder, output_folder)
+            XP5(folder, output_folder)
+            XP6(folder, output_folder)
         if XP=="1":
             XP1(folder, output_folder)
         if XP=="2":
