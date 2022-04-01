@@ -91,7 +91,7 @@ if RW=="0":
     sigs = np.array([1., 1., 1.])
     multivariate = True
 
-    arrR = [1., 0., 0.5, 1.5]
+    arrR = [1., 0.]
     nbDS = 10
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
