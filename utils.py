@@ -34,10 +34,6 @@ class Cluster(object):
 			self.word_distribution += doc.word_distribution
 		self.word_count += doc.word_count
 
-	# def __repr__(self):
-	# 	return 'cluster index:' + str(self.index) + '\n' +'word_count: ' + str(self.word_count) \
-	# 	+ '\nalpha:' + str(self.alpha)+"\n"
-
 class Particle(object):
 	"""docstring for Particle"""
 	def __init__(self, index, weight, alpha0, sample_num, size_kernel):
@@ -232,7 +228,8 @@ def g_theta(timeseq, reference_time, bandwidth, max_time):
 
 	return results
 
-def update_cluster_likelihoods(active_timestamps, particle, cluster, reference_time, bandwidth, base_intensity, max_time):
+def update_cluster_likelihoods(active_timestamps, particle, selected_cluster_index, reference_time, bandwidth, base_intensity, max_time, multivariate=True):
+	cluster = particle.clusters[selected_cluster_index]
 	timeseq = active_timestamps[:, 1]
 	clusseq = active_timestamps[:, 0]
 	num_active_clus = len(set(clusseq))
@@ -246,7 +243,13 @@ def update_cluster_likelihoods(active_timestamps, particle, cluster, reference_t
 		indclus = indToClus[int(clus)]
 		unweighted_integ_triggering_kernel[indclus] = unweighted_integ_triggering_kernel[indclus] + integ_trig
 
-	alphas_times_gtheta = np.tensordot(alphas, unweighted_integ_triggering_kernel, axes=2)
+	if multivariate:
+		alphas_times_gtheta = np.tensordot(alphas, unweighted_integ_triggering_kernel, axes=2)
+	else:  # Only consider the same cluster in likelihood computation
+		alpha_univ = alphas.copy()
+		outIndex = [i for i in range(alphas.shape[1]) if i != selected_cluster_index-1]
+		alpha_univ[:, outIndex] *= 0
+		alphas_times_gtheta = np.tensordot(alpha_univ, unweighted_integ_triggering_kernel, axes=2)
 
 	time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
 	if len(time_intervals)!=0:
@@ -257,8 +260,17 @@ def update_cluster_likelihoods(active_timestamps, particle, cluster, reference_t
 			indclus = indToClus[int(clus)]
 			unweighted_triggering_kernel[indclus] = unweighted_triggering_kernel[indclus] + trig
 
-		cluster.triggers = np.tensordot(alphas, unweighted_triggering_kernel, axes=2)
+
+		if multivariate:
+			cluster.triggers = np.tensordot(alphas, unweighted_triggering_kernel, axes=2)
+		else:  # Only consider the same cluster in likelihood computation
+			alpha_univ = alphas.copy()
+			alpha_univ = alphas.copy()
+			outIndex = [i for i in range(alphas.shape[1]) if i != selected_cluster_index-1]
+			alpha_univ[:, outIndex] *= 0
+			cluster.triggers = np.tensordot(alpha_univ, unweighted_triggering_kernel, axes=2)
 		cluster.likelihood_samples_sansLambda += np.log(cluster.triggers + 1e-20)
+
 
 	cluster.integ_triggers += alphas_times_gtheta
 

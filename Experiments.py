@@ -69,7 +69,7 @@ try:
     XP = sys.argv[2]
 except:
     RW = "0"
-    XP = "1"
+    XP = "tmp"
 
 
 if RW=="0":
@@ -89,17 +89,54 @@ if RW=="0":
     alpha0 = 1.  # Uniform beta or Dirichlet prior
     means = np.array([3, 7, 11])
     sigs = np.array([1., 1., 1.])
+    multivariate = True
 
     arrR = [1., 0., 0.5, 1.5]
     nbDS = 10
     sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
     particle_num = 10  # Like 10 simultaneous runs
-    multivariate = True
+    multivariate_fit = True
+    simple_DP = False
     printRes = True
     eval_on_go = True
 
     folder = "data/Synth/"
     output_folder = "output/Synth/"
+
+
+    def XP_temp(folder, output_folder):
+        folder += "XP_temp/"
+        output_folder += "XP_temp/"
+
+        print(output_folder)
+
+        DS = 0
+        r = 1.
+
+        overlap_voc = 0.5
+        overlap_temp = 1.
+
+        params = (folder, DS, nbClasses, num_obs, multivariate,
+                  overlap_voc, overlap_temp, perc_rand,
+                  voc_per_class, words_per_obs, theta0,
+                  lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+        generate(params)
+        name_ds, observations, vocabulary_size = getData(params)
+        name_ds = name_ds.replace("_events.txt", "")
+
+        print(f"DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
+        r = np.round(r, 2)
+
+        name_output = f"{name_ds}_r={r}" \
+                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
+                      f"_samplenum={sample_num}_particlenum={particle_num}"
+
+        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                eval_on_go=eval_on_go)
+
 
     # Overlap voc vs overlap temp
     def XP1(folder, output_folder):
@@ -148,10 +185,15 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                eval_on_go=eval_on_go)
+                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                            if not multivariate_fit:
+                                output_folder += "PDHP/"
+                            if simple_DP:
+                                output_folder += "PDP/"
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                    eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -195,11 +237,15 @@ if RW=="0":
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
-
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                eval_on_go=eval_on_go)
+                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                            if not multivariate_fit:
+                                output_folder += "PDHP/"
+                            if simple_DP:
+                                output_folder += "PDP/"
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                    eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -242,10 +288,15 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                eval_on_go=eval_on_go)
+                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                            if not multivariate_fit:
+                                output_folder += "PDHP/"
+                            if simple_DP:
+                                output_folder += "PDP/"
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                    eval_on_go=eval_on_go)
 
 
                         i += 1
@@ -286,10 +337,15 @@ if RW=="0":
                                   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                   f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                            eval_on_go=eval_on_go)
+                    for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        if not multivariate_fit:
+                            output_folder += "PDHP/"
+                        if simple_DP:
+                            output_folder += "PDP/"
+                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                eval_on_go=eval_on_go)
 
 
                     i += 1
@@ -345,10 +401,15 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                eval_on_go=eval_on_go)
+                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                            if not multivariate_fit:
+                                output_folder += "PDHP/"
+                            if simple_DP:
+                                output_folder += "PDP/"
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                    eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -392,10 +453,15 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate,
-                                eval_on_go=eval_on_go)
+                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                            if not multivariate_fit:
+                                output_folder += "PDHP/"
+                            if simple_DP:
+                                output_folder += "PDP/"
+                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                    eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -415,6 +481,8 @@ if RW=="0":
         XP5(folder, output_folder)
     if XP=="6":
         XP6(folder, output_folder)
+    if XP=="tmp":
+        XP_temp(folder, output_folder)
 
 else:
     lamb0_poisson = 0.01  # Set at ~2sigma
@@ -450,7 +518,8 @@ else:
     arrR = [1., 0., 1.5, 0.5]
     sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
     particle_num = 20  # Like 10 simultaneous runs
-    multivariate = True
+    multivariate_fit = True
+    simple_DP = False
     printRes = True
     eval_on_go = False
 
@@ -474,7 +543,7 @@ else:
         observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
         DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
                 sample_num=sample_num, particle_num=particle_num, printRes=printRes,
-                vocabulary_size=vocabulary_size, multivariate=multivariate, eval_on_go=eval_on_go, indexToWd=indexToWd)
+                vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,  eval_on_go=eval_on_go, indexToWd=indexToWd)
 
 
         # profiler.print_stats()

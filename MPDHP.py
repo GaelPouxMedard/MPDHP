@@ -20,9 +20,10 @@ pause()
 
 class Dirichlet_Hawkes_Process(object):
 	"""docstring for Dirichlet Hawkes Prcess"""
-	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r, multivariate, folder_output=None, name_output=None):
+	def __init__(self, particle_num, base_intensity, theta0, alpha0, reference_time, vocabulary_size, bandwidth, sample_num, r, multivariate, folder_output=None, name_output=None, simple_DP=False):
 		super(Dirichlet_Hawkes_Process, self).__init__()
 		self.r = r
+		self.simple_DP = simple_DP
 		self.multivariate = multivariate
 		self.particle_num = particle_num
 		self.base_intensity = base_intensity
@@ -127,6 +128,9 @@ class Dirichlet_Hawkes_Process(object):
 						rate = mat
 					else:
 						rate = 0.
+
+					if self.simple_DP:
+						rate = particle.docs2cluster_ID.count(active_cluster_index)
 
 					# Powered Dirichlet-Hawkes prior
 					active_cluster_rates.append(rate)
@@ -242,11 +246,16 @@ class Dirichlet_Hawkes_Process(object):
 		# 	return alpha
 
 		T = self.active_interval[1]
-		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, particle.clusters[selected_cluster_index], self.reference_time, self.bandwidth, self.base_intensity, T)
+		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, selected_cluster_index, self.reference_time, self.bandwidth, self.base_intensity, T, multivariate=self.multivariate)
 		alpha = update_triggering_kernel_optim(particle, particle.clusters[selected_cluster_index])
+
+		if not self.multivariate:
+			outIndex = [i for i in range(alpha.shape[0]) if i != particle.active_clus_to_ind[selected_cluster_index]]
+			alpha[outIndex] *= 0
 
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
+		#print(selected_cluster_index, particle.clusters[selected_cluster_index].alpha_final)
 
 		return alpha
 
@@ -606,7 +615,7 @@ def writeClusters(cluster, r, particle_num, folderOut, nameOut):
 
 	return finaldir
 
-def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, eval_on_go=False, indexToWd=None):
+def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=None, alpha0 = None, sample_num=2000, particle_num=8, printRes=False, vocabulary_size=None, multivariate=True, simple_DP=False, eval_on_go=False, indexToWd=None):
 	"""
 	observations = ([array int] index_obs, [array float] timestamp, ([array int] unique_words, [array int] count_words), [opt, int] temporal_cluster, [opt, int] textual_cluster)
 	folderOut = Output folder for the results
@@ -643,7 +652,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 	DHP = Dirichlet_Hawkes_Process(particle_num = particle_num, base_intensity = base_intensity, theta0 = theta0,
 								   alpha0 = alpha0, reference_time = reference_time, vocabulary_size = vocabulary_size,
-								   bandwidth = bandwidth, sample_num = sample_num, r=r, multivariate=multivariate,
+								   bandwidth = bandwidth, sample_num = sample_num, r=r, multivariate=multivariate, simple_DP=simple_DP,
 								   folder_output=folderOut, name_output=nameOut)
 
 	t = time.time()
