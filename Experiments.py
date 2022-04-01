@@ -185,7 +185,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -237,7 +237,7 @@ if RW=="0":
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
-                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -288,7 +288,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -337,7 +337,7 @@ if RW=="0":
                                   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                   f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                    for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                    for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                         if not multivariate_fit:
                             output_folder += "PDHP/"
                         if simple_DP:
@@ -401,7 +401,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -453,7 +453,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [(False, False), (False, True)]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -534,7 +534,7 @@ else:
 
     for r in arrR:
         name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
-                      f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
+                      f"r={np.round(r,1)}_multi={multivariate_fit}_samples={sample_num}_parts={particle_num}"
 
         # import pprofile
         # profiler = pprofile.Profile()
