@@ -186,6 +186,8 @@ if RW=="0":
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder += "MPDHP/"
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -238,6 +240,8 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder += "MPDHP/"
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -289,6 +293,8 @@ if RW=="0":
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder += "MPDHP/"
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -338,6 +344,8 @@ if RW=="0":
                                   f"_samplenum={sample_num}_particlenum={particle_num}"
 
                     for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                        if multivariate_fit and not simple_DP:
+                            output_folder += "MPDHP/"
                         if not multivariate_fit:
                             output_folder += "PDHP/"
                         if simple_DP:
@@ -402,6 +410,8 @@ if RW=="0":
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder += "MPDHP/"
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
@@ -454,6 +464,8 @@ if RW=="0":
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder += "MPDHP/"
                             if not multivariate_fit:
                                 output_folder += "PDHP/"
                             if simple_DP:
