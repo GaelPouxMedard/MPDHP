@@ -192,10 +192,15 @@ if RW=="0":
                                 output_folder += "PDHP/"
                             if simple_DP:
                                 output_folder += "PDP/"
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                    eval_on_go=eval_on_go)
+
+
+                            if not simple_DP or (simple_DP and r<1e-5):
+                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -246,10 +251,14 @@ if RW=="0":
                                 output_folder += "PDHP/"
                             if simple_DP:
                                 output_folder += "PDP/"
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                    eval_on_go=eval_on_go)
+
+                            if not simple_DP or (simple_DP and r<1e-5):
+                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -299,10 +308,14 @@ if RW=="0":
                                 output_folder += "PDHP/"
                             if simple_DP:
                                 output_folder += "PDP/"
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                    eval_on_go=eval_on_go)
+
+                            if not simple_DP or (simple_DP and r<1e-5):
+                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
 
                         i += 1
@@ -350,10 +363,14 @@ if RW=="0":
                             output_folder += "PDHP/"
                         if simple_DP:
                             output_folder += "PDP/"
-                        run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                eval_on_go=eval_on_go)
+
+                        if not simple_DP or (simple_DP and r<1e-5):
+                            if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                        theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                        printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                        eval_on_go=eval_on_go)
 
 
                     i += 1
@@ -416,10 +433,14 @@ if RW=="0":
                                 output_folder += "PDHP/"
                             if simple_DP:
                                 output_folder += "PDP/"
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                    eval_on_go=eval_on_go)
+
+                            if not simple_DP or (simple_DP and r<1e-5):
+                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
@@ -470,10 +491,14 @@ if RW=="0":
                                 output_folder += "PDHP/"
                             if simple_DP:
                                 output_folder += "PDP/"
-                            run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
-                                    theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                    printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                    eval_on_go=eval_on_go)
+
+                            if not simple_DP or (simple_DP and r<1e-5):
+                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
