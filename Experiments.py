@@ -194,8 +194,8 @@ if RW=="0":
                                 output_folder += "PDP/"
 
 
-                            if not simple_DP or (simple_DP and r<1e-5):
-                                if multivariate_fit or (multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                            if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
+                                if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                     print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
                                     run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r,
                                             theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
