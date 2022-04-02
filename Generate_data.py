@@ -292,7 +292,7 @@ def generate(params):
     print(len(events), "events")
     unique, cnt = np.unique(events[:, 0], return_counts=True)
     print(list(cnt))
-    visualize = True
+    visualize = False
     if visualize:
         plotProcess(events, means, sigs, alpha, lamb0_classes)
         plt.show()
