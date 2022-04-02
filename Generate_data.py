@@ -206,12 +206,16 @@ def plotProcess(events, means, sigs, alpha, lamb0):
     tabvals = np.array(tabvals)
 
     for c in range(nbClasses):
-        plt.plot(ranget, lamb0+tabvals[c], "-", c=colors[c])
+        plt.plot(ranget, lamb0+tabvals[c], "-", c=colors[c], label=f"Cluster {c+1}")
 
     all_timestamps = events[:, 1]
     all_clus = events[:, 0]
     colors_dots = [colors[int(clus)] for clus in all_clus]
     plt.scatter(all_timestamps, [0]*len(all_timestamps), c=colors_dots, s=1)
+    plt.legend()
+    plt.xlabel("Time")
+    plt.ylabel("Intensity")
+    plt.tight_layout()
 
 
 
@@ -288,12 +292,12 @@ def generate(params):
     print(len(events), "events")
     unique, cnt = np.unique(events[:, 0], return_counts=True)
     print(list(cnt))
-    visualize = False
+    visualize = True
     if visualize:
         plotProcess(events, means, sigs, alpha, lamb0_classes)
         plt.show()
 
-        fit = True
+        fit = False
         if fit:
             em = HawkesEM(15, kernel_size=30, n_threads=7, verbose=False, tol=1e-3)
             em.fit(hawkes.timestamps)

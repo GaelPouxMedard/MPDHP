@@ -112,9 +112,10 @@ if RW=="0":
 
         DS = 0
         r = 1.
-
+        num_obs = 100
+        multivariate = False
         overlap_voc = 0.5
-        overlap_temp = 1.
+        overlap_temp = 0.
 
         params = (folder, DS, nbClasses, num_obs, multivariate,
                   overlap_voc, overlap_temp, perc_rand,
