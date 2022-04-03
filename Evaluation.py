@@ -923,9 +923,9 @@ if __name__=="__main__":
 
                 for i_model, model in enumerate(arrModels):
                     if model !="UP":
-                        output_folder = output_folder_based + model + "/"
+                        output_folder_based = output_folder_based + model + "/"
                     else:
-                        output_folder = output_folder_based + "MPDHP" + "/"
+                        output_folder_based = output_folder_based + "MPDHP" + "/"
                     for i_overlap_voc, overlap_voc in enumerate(sorted(overlaps_voc)):
                         for i_overlap_temp, overlap_temp in enumerate(sorted(overlaps_temp)):
                             overlap_voc = np.round(overlap_voc, 2)
@@ -962,7 +962,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder_based, name_output, get_clusters=False)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR.append(np.nan)
