@@ -152,7 +152,7 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "0"
-        XP = "2"
+        XP = "7"
 
     num_NMI_last = 5000000000  # ======================================================================================================
     norm_err = 0.2  # ======================================================================================================
@@ -533,7 +533,7 @@ if __name__=="__main__":
                 matStd[:] = np.nan
                 lab_arr_perc_rand = {}
 
-                for words_per_obs in [10, 20]:
+                for words_per_obs in [20]:
                     for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
                         perc_rand = np.round(perc_rand, 2)
 
@@ -895,7 +895,112 @@ if __name__=="__main__":
 
         # MPDHP vs PDHP vs UP vs CRP
         def XP7(folder, output_folder):
-            pass
+            folder += "XP1/"
+            output_folder_based = output_folder + "XP1/"
+
+            results_folder = output_folder_based.replace("output/", "results/").replace("XP1/", "XP7/")
+            ensureFolder(results_folder)
+
+            overlaps_voc = np.linspace(0, 1, 6)
+            overlaps_temp = [0.]
+            arrModels = ["MPDHP", "PDHP", "PDP", "UP"]
+
+            matRes = np.empty((len(overlaps_voc), len(arrModels)))
+            matRes[:] = np.nan
+            matStd = np.empty((len(overlaps_voc), len(arrModels)))
+            matStd[:] = np.nan
+            lab_overlap_voc = {}
+            lab_model = {}
+
+            for i_model, model in enumerate(arrModels):
+                if model !="UP":
+                    output_folder = output_folder_based + model + "/"
+                else:
+                    output_folder = output_folder_based + "MPDHP" + "/"
+                for i_overlap_voc, overlap_voc in enumerate(sorted(overlaps_voc)):
+                    for i_overlap_temp, overlap_temp in enumerate(sorted(overlaps_temp)):
+                        overlap_voc = np.round(overlap_voc, 2)
+                        overlap_temp = np.round(overlap_temp, 2)
+
+                        lab_overlap_voc[i_overlap_voc] = str(overlap_voc)
+                        lab_model[i_model] = str(model)
+
+
+                        arrResR = []
+                        for DS in range(nbDS):
+                            params = (folder, DS, nbClasses, num_obs, multivariate,
+                                      overlap_voc, overlap_temp, perc_rand,
+                                      voc_per_class, words_per_obs, theta0,
+                                      lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+
+                            try:
+                                name_ds, observations, vocabulary_size = getData(params)
+                                name_ds = name_ds.replace("_events.txt", "")
+                            except Exception as e:
+                                print(f"Data not found - {e}")
+                                continue
+
+                            if model=="UP":
+                                r=0.
+                            else:
+                                r=1.
+
+                            print(f"{model} - DS {DS} - overlap voc = {overlap_voc} - overlap temp = {overlap_temp} - r = {r}")
+                            r = np.round(r, 2)
+
+                            name_output = f"{name_ds}_r={r}" \
+                                          f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
+                                          f"_samplenum={sample_num}_particlenum={particle_num}"
+
+                            try:
+                                DHP = read_particles(output_folder, name_output, get_clusters=False)
+                            except Exception as e:
+                                print(f"Output not found - {e}")
+                                arrResR.append(np.nan)
+                                continue
+
+                            selected_particle = sorted(DHP.particles, key=lambda x: x.weight, reverse=True)[0]
+                            clus_inf = selected_particle.docs2cluster_ID
+                            clus_true = np.array(list(map(list, observations[:, 3])))[:, 0]
+
+                            clus_inf = clus_inf[-num_NMI_last:]
+                            clus_true = clus_true[-num_NMI_last:]
+
+                            if len(clus_inf) != len(clus_true):
+                                arrResR.append(np.nan)
+                                continue
+
+                            score = NMI(clus_true, clus_inf)
+
+                            arrResR.append(score)
+                            print(score)
+
+                        arrResR = np.array(arrResR)
+
+                        if not np.isnan(arrResR).all():
+                            meanTabNMI = np.nanmean(arrResR)
+                            stdTabNMI = nansem(arrResR)
+                            matRes[i_overlap_voc, i_model] = meanTabNMI
+                            matStd[i_overlap_voc, i_model] = stdTabNMI
+
+                        scale=6
+                        plt.figure(figsize=(1*scale, 1*scale))
+
+                        plt.subplot(1, 1, 1)
+                        lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
+                        lab_y = [str(lab_model[idx]) for idx in lab_model]
+
+                        sns.heatmap(np.round(matRes, 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
+                                    cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
+
+                        plt.gca().invert_yaxis()
+                        for ix in range(len(lab_overlap_voc)):
+                            for iy in range(len(lab_model)):
+                                plt.plot([ix+0.5-matStd[ix, iy]/(2*norm_err), ix+0.5+matStd[ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
+                        plt.xlabel("Textual overlap")
+                    plt.tight_layout()
+                    plt.savefig(results_folder+"heatmap.pdf")
+                    plt.close()
 
         # Learning rate
         def XP8(folder, output_folder):
@@ -921,6 +1026,10 @@ if __name__=="__main__":
             XP5(folder, output_folder)
         if XP=="6":
             XP6(folder, output_folder)
+        if XP=="7":
+            XP7(folder, output_folder)
+        if XP=="8":
+            XP8(folder, output_folder)
 
     else:
         lamb0_poisson = 0.01  # Set at ~2sigma
