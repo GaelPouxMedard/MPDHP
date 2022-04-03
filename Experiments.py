@@ -194,7 +194,7 @@ if RW=="0":
                                 lamb0_poisson_used = lamb0_poisson
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
-                                lamb0_poisson_used = lamb0_poisson*10
+                                lamb0_poisson_used = lamb0_poisson*100
 
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
@@ -250,15 +250,18 @@ if RW=="0":
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if not multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "PDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
+                                lamb0_poisson_used = lamb0_poisson*100
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                                 if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                     print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson, means, sigs, r=r,
+                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
                                             theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                             printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
                                             eval_on_go=eval_on_go)
@@ -307,15 +310,18 @@ if RW=="0":
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if not multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "PDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
+                                lamb0_poisson_used = lamb0_poisson*100
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                                 if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                     print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson, means, sigs, r=r,
+                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
                                             theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                             printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
                                             eval_on_go=eval_on_go)
@@ -362,15 +368,18 @@ if RW=="0":
                     for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                         if multivariate_fit and not simple_DP:
                             output_folder_model = output_folder + "MPDHP/"
+                            lamb0_poisson_used = lamb0_poisson
                         if not multivariate_fit and not simple_DP:
                             output_folder_model = output_folder + "PDHP/"
+                            lamb0_poisson_used = lamb0_poisson
                         if simple_DP:
                             output_folder_model = output_folder + "PDP/"
+                            lamb0_poisson_used = lamb0_poisson*100
 
                         if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                             if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                 print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                run_fit(observations, output_folder_model, name_output, lamb0_poisson, means, sigs, r=r,
+                                run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
                                         theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                         printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
                                         eval_on_go=eval_on_go)
@@ -432,15 +441,18 @@ if RW=="0":
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if not multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "PDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
+                                lamb0_poisson_used = lamb0_poisson*100
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                                 if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                     print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson, means, sigs, r=r,
+                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
                                             theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                             printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
                                             eval_on_go=eval_on_go)
@@ -490,15 +502,18 @@ if RW=="0":
                         for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if not multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "PDHP/"
+                                lamb0_poisson_used = lamb0_poisson
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
+                                lamb0_poisson_used = lamb0_poisson*100
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                                 if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
                                     print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson, means, sigs, r=r,
+                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
                                             theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
                                             printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
                                             eval_on_go=eval_on_go)
@@ -506,14 +521,6 @@ if RW=="0":
                         i += 1
                         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
                               f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
-
-    # MPDHP vs PDHP vs UP vs CRP
-    def XP7(folder, output_folder):
-        pass
-
-    # Learning rate
-    def XP8(folder, output_folder):
-        pass
 
     if XP=="1":
         XP1(folder, output_folder)
