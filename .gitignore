@@ -1,5 +1,6 @@
 /data/Synth/
 /data/Covid/COVID-19-Tweets-treated-wo-retweets_*
 /output/
+/results/
 /__pycache__/
 /.idea/
