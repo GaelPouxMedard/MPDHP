@@ -185,7 +185,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
@@ -247,7 +247,7 @@ if RW=="0":
                         name_output = f"{name_ds}_r={r}" \
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
-                        for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
@@ -307,7 +307,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
@@ -365,7 +365,7 @@ if RW=="0":
                                   f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                   f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                    for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                    for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                         if multivariate_fit and not simple_DP:
                             output_folder_model = output_folder + "MPDHP/"
                             lamb0_poisson_used = lamb0_poisson
@@ -438,7 +438,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
@@ -499,7 +499,7 @@ if RW=="0":
                                       f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
                                       f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                        for (multivariate_fit, simple_DP) in [[False, True]]:#[(True, False), (False, False), (False, True)]:
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
