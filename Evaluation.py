@@ -51,7 +51,7 @@ def readObservations(folder, name_ds, output_folder):
             tup = (i, timestamp, [uniquewords, cntwords], [clusTxt, clusTmp])
             observations.append(tup)
 
-            if 'Covid' in dataFile and i>10000 and True:  # ============================================
+            if 'Covid' in dataFile and i>10000 and False:  # ============================================
                 print("BROKEN ===")
                 break
 
@@ -156,7 +156,6 @@ if __name__=="__main__":
 
     num_NMI_last = 5000000000  # ======================================================================================================
     norm_err = 0.2  # ======================================================================================================
-    nbDS = 2  # ======================================================================================================
 
 
     if RW=="0":
@@ -179,7 +178,7 @@ if __name__=="__main__":
             sigs = np.array([1., 1., 1.])
 
             arrR = [0., 1.]
-            nbDS = 1 #10 ===============================================================
+            nbDS = 10
             sample_num = 2000  # Typically 5 active clusters, so 25*5 parameters to infer using 2000*5 samples => ~80 samples per parameter
             particle_num = 10  # Like 10 simultaneous runs
             multivariate = True
