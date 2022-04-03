@@ -395,7 +395,7 @@ if RW=="0":
         output_folder += "XP5/"
 
         overlaps_voc = np.linspace(0, 1, 6)
-        overlaps_temp = np.linspace(0, 1, 6)
+        overlaps_temp = [0.]
         multivariate = False
         lamb0_classes = 0.15  # Slightly higher to avoid gaps in Hawkes process
 
