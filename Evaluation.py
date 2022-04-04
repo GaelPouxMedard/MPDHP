@@ -1028,8 +1028,9 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         for ix in range(len(lab_overlap_voc)):
                             for iy in range(len(lab_model)):
-                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c="white",
-                                         fontsize=6, path_effects=[pe.withStroke(linewidth=1, foreground="k")])
+                                col = "k"
+                                if np.round(matRes, 2)<0.5: col="white"
+                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col)
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}_ErrNumEst.pdf")
