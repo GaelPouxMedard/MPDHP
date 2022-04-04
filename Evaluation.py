@@ -1030,7 +1030,7 @@ if __name__=="__main__":
                                 plt.text(ix+0.5, iy+0.2, f"({matStd[ix, iy]})", ha="center", c="white", fontsize=8)
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
-                        plt.savefig(results_folder+f"heatmap_{strMult}.pdf")
+                        plt.savefig(results_folder+f"heatmap_{strMult}_ErrNumEst.pdf")
                         plt.close()
 
         # Learning rate
