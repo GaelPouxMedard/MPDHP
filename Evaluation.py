@@ -1028,8 +1028,8 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         for ix in range(len(lab_overlap_voc)):
                             for iy in range(len(lab_model)):
-                                col = "k"
-                                if np.round(matRes[ix, iy], 2)<0.5: col="white"
+                                col = "white"
+                                if np.round(matRes[ix, iy], 2)>0.5: col="k"
                                 plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col)
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
