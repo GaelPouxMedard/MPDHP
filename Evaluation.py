@@ -899,11 +899,11 @@ if __name__=="__main__":
             folder_base = folder
             for multivariate in [True, False]:
                 if multivariate:
-                    strMult = "Multivariate data"
+                    strMult = "Multivariate_data"
                     folder = folder_base + "XP1/"
                     output_folder_based = output_folder + "XP1/"
                 else:
-                    strMult = "Univariate data"
+                    strMult = "Univariate_data"
                     folder = folder_base + "XP5/"
                     output_folder_based = output_folder + "XP5/"
 
