@@ -310,7 +310,7 @@ if __name__=="__main__":
             output_folder_based = output_folder + "XP2/"
 
             for model in ["MPDHP", "PDHP", "PDP", ]:
-                if "PDHP" in model or "PDP" in model:
+                if model != "MPDHP":
                     continue
                 output_folder = output_folder_based + model + "/"
                 results_folder = output_folder.replace("output/", "results/")
