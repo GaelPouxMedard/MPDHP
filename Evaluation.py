@@ -993,21 +993,42 @@ if __name__=="__main__":
                                 matRes[i_overlap_voc, i_model] = meanTabNMI
                                 matStd[i_overlap_voc, i_model] = stdTabNMI
 
-                            scale=6
-                            plt.figure(figsize=(1*scale, 1*scale))
+                        # Barres d'erreur graphiques
+                        scale=6
+                        plt.figure(figsize=(1*scale, 1*scale))
 
-                            plt.subplot(1, 1, 1)
-                            lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
-                            lab_y = [str(lab_model[idx]) for idx in lab_model]
+                        plt.subplot(1, 1, 1)
+                        lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
+                        lab_y = [str(lab_model[idx]) for idx in lab_model]
 
-                            sns.heatmap(np.round(matRes, 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
-                                        cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
+                        sns.heatmap(np.round(matRes, 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
+                                    cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
 
-                            plt.gca().invert_yaxis()
-                            for ix in range(len(lab_overlap_voc)):
-                                for iy in range(len(lab_model)):
-                                    plt.plot([ix+0.5-matStd[ix, iy]/(2*norm_err), ix+0.5+matStd[ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
-                            plt.xlabel("Textual overlap")
+                        plt.gca().invert_yaxis()
+                        for ix in range(len(lab_overlap_voc)):
+                            for iy in range(len(lab_model)):
+                                plt.plot([ix+0.5-matStd[ix, iy]/(2*norm_err), ix+0.5+matStd[ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
+                        plt.xlabel("Textual overlap")
+                        plt.tight_layout()
+                        plt.savefig(results_folder+f"heatmap_{strMult}.pdf")
+                        plt.close()
+
+                        # Barres d'erreur numériques
+                        scale=6
+                        plt.figure(figsize=(1*scale, 1*scale))
+
+                        plt.subplot(1, 1, 1)
+                        lab_x = [str(lab_overlap_voc[idx]) for idx in lab_overlap_voc]
+                        lab_y = [str(lab_model[idx]) for idx in lab_model]
+
+                        sns.heatmap(np.round(matRes, 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
+                                    cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
+
+                        plt.gca().invert_yaxis()
+                        for ix in range(len(lab_overlap_voc)):
+                            for iy in range(len(lab_model)):
+                                plt.text(ix+0.5, iy+0.2, f"({matStd[ix, iy]})", ha="center", c="white", fontsize=8)
+                        plt.xlabel("Textual overlap")
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}.pdf")
                         plt.close()
