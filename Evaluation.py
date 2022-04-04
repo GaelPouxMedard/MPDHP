@@ -12,6 +12,7 @@ from scipy.stats import sem
 from wordcloud import WordCloud
 import multidict as multidict
 import re
+import matplotlib.patheffects as pe
 
 
 def ensureFolder(folder):
@@ -1027,7 +1028,8 @@ if __name__=="__main__":
                         plt.gca().invert_yaxis()
                         for ix in range(len(lab_overlap_voc)):
                             for iy in range(len(lab_model)):
-                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c="white", fontsize=6)
+                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c="white",
+                                         fontsize=6, path_effects=[pe.withStroke(linewidth=4, foreground="k")])
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}_ErrNumEst.pdf")
