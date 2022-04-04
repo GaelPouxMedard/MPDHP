@@ -934,7 +934,10 @@ if __name__=="__main__":
                             overlap_temp = np.round(overlap_temp, 2)
 
                             lab_overlap_voc[i_overlap_voc] = str(overlap_voc)
-                            lab_model[i_model] = str(model)
+                            strlabmod = model
+                            if model == "PDHP": strlabmod = "DHP"
+                            if model == "PDP": strlabmod = "DP"
+                            lab_model[i_model] = strlabmod
 
 
                             arrResR = []
