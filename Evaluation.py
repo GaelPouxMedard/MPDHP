@@ -908,7 +908,7 @@ if __name__=="__main__":
                     output_folder_based = output_folder + "XP5/"
 
 
-                results_folder = output_folder_based.replace("output/", "results/").replace("XP1/", "XP7/")
+                results_folder = output_folder_based.replace("output/", "results/").replace("XP1/", "XP7/").replace("XP5/", "XP7/")
                 ensureFolder(results_folder)
 
                 overlaps_voc = np.linspace(0, 1, 6)
