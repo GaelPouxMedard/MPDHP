@@ -1030,7 +1030,7 @@ if __name__=="__main__":
                             for iy in range(len(lab_model)):
                                 col = "white"
                                 if np.round(matRes[ix, iy], 2)<0.45: col="k"
-                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col)
+                                plt.text(ix+0.5, iy+0.2, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col, fontsize=7)
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}_ErrNumEst.pdf")
