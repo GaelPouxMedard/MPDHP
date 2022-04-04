@@ -1013,6 +1013,7 @@ if __name__=="__main__":
                             for iy in range(len(lab_model)):
                                 plt.plot([ix+0.5-matStd[ix, iy]/(2*norm_err), ix+0.5+matStd[ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("Textual overlap")
+                        plt.gca().invert_yaxis()
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}.pdf")
                         plt.close()
