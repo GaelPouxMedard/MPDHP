@@ -638,7 +638,7 @@ if __name__=="__main__":
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
                                     if np.round(matRes[0, ix, iy], 2)<0.45: col="k"
-                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col, fontsize=7)
+                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[0, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
 
@@ -651,7 +651,7 @@ if __name__=="__main__":
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
                                     if np.round(matRes[1, ix, iy], 2)<0.45: col="k"
-                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col, fontsize=7)
+                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[1, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
 
@@ -663,7 +663,7 @@ if __name__=="__main__":
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
                                     if np.round(matRes[2, ix, iy], 2)<0.45: col="k"
-                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col, fontsize=7)
+                                    plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[2, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
 
