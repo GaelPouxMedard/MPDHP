@@ -426,7 +426,7 @@ if __name__=="__main__":
                 ensureFolder(results_folder)
 
                 arr_words_per_obs = [2, 5, 8, 10, 15, 20, 25, 30]
-                arr_overlap_voc = [0., 0.2, 0.4, 0.6, 0.8]
+                arr_overlap_voc = np.linspace(0, 1, 6)
                 arrR = [1.]
 
 
