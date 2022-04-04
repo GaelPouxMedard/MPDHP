@@ -251,12 +251,16 @@ if RW=="0":
                             if multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "MPDHP/"
                                 lamb0_poisson_used = lamb0_poisson
+                                if r<1e-5:
+                                    continue
                             if not multivariate_fit and not simple_DP:
                                 output_folder_model = output_folder + "PDHP/"
                                 lamb0_poisson_used = lamb0_poisson
+                                continue
                             if simple_DP:
                                 output_folder_model = output_folder + "PDP/"
                                 lamb0_poisson_used = lamb0_poisson*100
+                                continue
 
                             if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
                                 if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
