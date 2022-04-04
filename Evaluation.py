@@ -1008,12 +1008,11 @@ if __name__=="__main__":
                         sns.heatmap(np.round(matRes, 2).T, xticklabels=lab_x, yticklabels=lab_y, cmap="afmhot_r", square=True, annot=True,
                                     cbar_kws={"label":"NMI", "shrink": 0.6}, vmin=0, vmax=1)
 
-                        plt.gca().invert_yaxis()
+                        #plt.gca().invert_yaxis()
                         for ix in range(len(lab_overlap_voc)):
                             for iy in range(len(lab_model)):
                                 plt.plot([ix+0.5-matStd[ix, iy]/(2*norm_err), ix+0.5+matStd[ix, iy]/(2*norm_err)], [iy+0.2]*2, "-|", c="gray")
                         plt.xlabel("Textual overlap")
-                        plt.gca().invert_yaxis()
                         plt.tight_layout()
                         plt.savefig(results_folder+f"heatmap_{strMult}.pdf")
                         plt.close()
