@@ -298,7 +298,7 @@ if __name__=="__main__":
                             for ix in range(len(lab_overlap_voc)):
                                 for iy in range(len(lab_overlap_temp)):
                                     col = "white"
-                                    if np.round(matRes[i_r, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[i_r, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[i_r, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("Textual overlap")
                             plt.ylabel("Temporal overlap")
@@ -407,7 +407,7 @@ if __name__=="__main__":
                             for ix in range(len(lab_arrNbClasses)):
                                 for iy in range(len(lab_arrLambPoisson)):
                                     col = "white"
-                                    if np.round(matRes[i_r, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[i_r, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[i_r, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("# classes")
                             plt.ylabel(r"$\lambda_0$")
@@ -514,7 +514,7 @@ if __name__=="__main__":
                             for ix in range(len(lab_arr_words_per_obs)):
                                 for iy in range(len(lab_arr_overlap_voc)):
                                     col = "white"
-                                    if np.round(matRes[i_r, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[i_r, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[i_r, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("# words per event")
                             plt.ylabel("Textual overlap")
@@ -637,7 +637,7 @@ if __name__=="__main__":
                             for ix in range(len(arrR)):
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
-                                    if np.round(matRes[0, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[0, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[0, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
@@ -650,7 +650,7 @@ if __name__=="__main__":
                             for ix in range(len(arrR)):
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
-                                    if np.round(matRes[1, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[1, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[1, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
@@ -662,7 +662,7 @@ if __name__=="__main__":
                             for ix in range(len(arrR)):
                                 for iy in range(len(lab_arr_perc_rand)):
                                     col = "white"
-                                    if np.round(matRes[2, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[2, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[2, ix, iy], 2)}", ha="center", c=col, fontsize=7)
                             plt.xlabel("r")
                             plt.ylabel("Percentage decorrelated")
@@ -785,7 +785,7 @@ if __name__=="__main__":
                             for ix in range(len(lab_overlap_voc)):
                                 for iy in range(len(lab_overlap_temp)):
                                     col = "white"
-                                    if np.round(matRes[i_r, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[i_r, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[i_r, ix, iy], 2)}", ha="center", c=col, fontsize=7)
 
                             plt.gca().invert_yaxis()
@@ -904,7 +904,7 @@ if __name__=="__main__":
                             for ix in range(len(lab_num_part)):
                                 for iy in range(len(lab_num_sample)):
                                     col = "white"
-                                    if np.round(matRes[i_r, ix, iy], 2)<0.45: col="k"
+                                    if np.round(matRes[i_r, ix, iy], 2)<0.47: col="k"
                                     plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[i_r, ix, iy], 2)}", ha="center", c=col, fontsize=7)
 
                         plt.tight_layout()
@@ -1026,7 +1026,7 @@ if __name__=="__main__":
                         for ix in range(len(lab_overlap_voc)):
                             for iy in range(len(lab_model)):
                                 col = "white"
-                                if np.round(matRes[ix, iy], 2)<0.45: col="k"
+                                if np.round(matRes[ix, iy], 2)<0.47: col="k"
                                 plt.text(ix+0.5, iy+0.8, fr"$\pm${np.round(matStd[ix, iy], 2)}", ha="center", c=col, fontsize=7)
                         plt.xlabel("Textual overlap")
                         plt.tight_layout()
