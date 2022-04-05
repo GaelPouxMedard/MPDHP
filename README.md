@@ -1,14 +1,16 @@
 # MPDHP
-The script MPDHP.py is an implementation of the Powered Dirichlet-Hawkes process prior coupled to a simple Dirichlet-Multinomial language model, that can be ran from console.
+The script MPDHP.py is an implementation of the Multivariate Powered Dirichlet-Hawkes process prior coupled to a simple Dirichlet-Multinomial language model, that can be ran from console.
 
 ## Usage
-Run the script PDHP.py using the following syntax: [keyword]=[value][space]
+Run the script MPDHP.py using the following syntax: [keyword]=[value][space]
 The keywords are:
 
 - data_file (str) (*) => The file that contains events
 - kernel_file (str) (**) => The file that contains Gaussian kernel's parameters
 - output_folder (str) (***) => Where to save the files (words index and particles every 1000 iterations)
 - r (float or comma separated floats) => Exponent used for the Powered Dirichlet-Hawkes prior. If a list is provided, experiments will be ran for each value
+- multivariate => Whether to use the MPDHP (True; where clusters can interact with each other) or the PDHP (False; where clusters can only self-interact, check Poux-Médard, ICDM 2021)
+- simple_DP => Whether to consider a classical Dirichlet prior, where P(cluster) is proportional to population of the cluster
 - runs (int) => Number of runs on the given dataset
 - theta0 (float) => Value of the symmetric Dirichlet-Multinomial prior to model textual content
 - alpha0 (float) => Value of the symmetric Dirichlet prior to model temporal kernels weights

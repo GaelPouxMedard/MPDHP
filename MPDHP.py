@@ -422,7 +422,7 @@ class Dirichlet_Hawkes_Process(object):
 
 def getArgs(args):
 	import re
-	dataFile, kernelFile, outputFolder, r, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = [None]*10
+	dataFile, kernelFile, outputFolder, r, nbRuns, theta0, alpha0, sample_num, particle_num, printRes, multivariate, simple_DP = [None]*12
 	for a in args:
 		print(a)
 		try: dataFile = re.findall("(?<=data_file=)(.*)(?=)", a)[0]
@@ -445,6 +445,10 @@ def getArgs(args):
 		except: pass
 		try: printRes = bool(re.findall("(?<=print_progress=)(.*)(?=)", a)[0])
 		except: pass
+		try: multivariate = bool(re.findall("(?<=multivariate=)(.*)(?=)", a)[0])
+		except: pass
+		try: simple_DP = bool(re.findall("(?<=simple_DP=)(.*)(?=)", a)[0])
+		except: pass
 
 	if dataFile is None:
 		sys.exit("Enter a valid value for data_file")
@@ -459,6 +463,8 @@ def getArgs(args):
 	if sample_num is None: print("sample_num value not found; defaulted to 2000"); sample_num=2000
 	if particle_num is None: print("particle_num value not found; defaulted to 8"); particle_num=8
 	if printRes is None: print("printRes value not found; defaulted to True"); printRes=True
+	if multivariate is None: print("multivariate value not found; defaulted to True"); multivariate=True
+	if simple_DP is None: print("simple_DP value not found; defaulted to False"); simple_DP=False
 
 	with open(kernelFile, 'r') as f:
 		i=0
@@ -485,7 +491,7 @@ def getArgs(args):
 	rarr = []
 	for rstr in r.split(","):
 		rarr.append(float(rstr))
-	return dataFile, outputFolder, means, sigs, lamb0, rarr, nbRuns, theta0, alpha0, sample_num, particle_num, printRes
+	return dataFile, outputFolder, means, sigs, lamb0, rarr, nbRuns, theta0, alpha0, sample_num, particle_num, printRes, multivariate, simple_DP
 
 def ensureFolder(folder):
 	curfol = "./"
@@ -694,7 +700,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 if __name__ == '__main__':
 	try:
-		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes = getArgs(sys.argv)
+		dataFile, outputFolder, means, sigs, lamb0, arrR, nbRuns, theta0, alpha0, sample_num, particle_num, printRes, multivariate, simple_DP = getArgs(sys.argv)
 	except:
 		nbClasses = 2
 		num_obs = 500
@@ -712,8 +718,8 @@ if __name__ == '__main__':
 		lamb0 = 0.035  # Cannot be inferred
 		theta0 = 10.  # Has already been documented for RW in LDA like models, DHP, etc ~0.01, 0.001
 		alpha0 = 1.  # Uniform beta or Dirichlet prior
-		means = np.array([3, 5, 7, 11, 13])
-		sigs = np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+		means = np.array([3, 7, 11])
+		sigs = np.array([0.5, 0.5, 0.5])
 
 		folder = "data/Synth/"
 		nameData = f"Obs_nbclasses={nbClasses}_lg={num_obs}_overlapvoc={overlap_voc}_overlaptemp={overlap_temp}" \
@@ -727,6 +733,7 @@ if __name__ == '__main__':
 		sample_num = 2000
 		particle_num = 8
 		multivariate = True
+		simple_DP = False
 		printRes = True
 
 
