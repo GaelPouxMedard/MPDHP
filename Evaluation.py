@@ -161,7 +161,7 @@ def plot_kernel(c, DHP, consClus):
         active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
         timeseq = active_timestamps_cons[:, 1]
         clusseq = active_timestamps_cons[:, 0]
-        if len(timeseq)<=1: continue
+        if len(timeseq)<=0: continue
         time_intervals = timeseq[-1] - timeseq[:-1]
         if len(time_intervals)!=0:
             RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
@@ -185,6 +185,8 @@ def plot_kernel(c, DHP, consClus):
         if influencer_clus not in DHP.particles[0].clusters[c].alpha_final:
             continue
         trigger_clus = trigger.dot(DHP.particles[0].clusters[c].alpha_final[influencer_clus])
+        if influencer_clus<=5:
+            print(influencer_clus, list(DHP.particles[0].clusters[c].alpha_final[influencer_clus]))
 
         alpha = weigths[indToClus[influencer_clus]]
         if alpha<5e-3: continue
@@ -263,7 +265,7 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "1"
-        XP = "en"
+        XP = "fr"
 
 
 
@@ -1188,7 +1190,7 @@ if __name__=="__main__":
             theta0 = float(sys.argv[4])
         except:
             timescale = "h"
-            theta0 = 0.0001
+            theta0 = 0.01
 
         if True:
             if timescale=="min":
@@ -1239,11 +1241,23 @@ if __name__=="__main__":
                 if DHP.particles[0].docs2cluster_ID.count(consClus[i])<100:
                     consClus.remove(consClus[i])
 
+            for c in sorted(DHP.particles[0].clusters, reverse=False):
+                for c2 in sorted(DHP.particles[0].clusters[c].alpha_final, reverse=False):
+                    if c<5 and c2<5:
+                        print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
+                print()
+
+            pause()
+
             scale = 4
             for c in sorted(DHP.particles[0].clusters, reverse=False):
                 if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
                     continue
 
+
+                for influencer_clus in consClus:
+                    print(list(DHP.particles[0].clusters[c].alpha_final[influencer_clus]))
+                    continue
 
                 fig = plt.figure(figsize=(1*scale, 3*scale))
 

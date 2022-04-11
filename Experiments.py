@@ -544,7 +544,7 @@ if RW=="0":
     if XP=="tmp":
         XP_temp(folder, output_folder)
 
-else:
+elif RW=="1":
     lamb0_poisson = 0.01  # Set at ~2sigma
 
     means = None
@@ -621,5 +621,81 @@ else:
             print([indexToWd[idx] for idx in wds][:10],
                 len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
 
+elif RW=="2":
 
+    lamb0_poisson = 0.01  # Set at ~2sigma
+
+    means = None
+    sigs = None
+
+    try:
+        timescale = sys.argv[3]
+        theta0 = float(sys.argv[4])
+    except:
+        timescale = "min"
+        theta0 = 0.01  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
+
+    if timescale=="min":
+        lamb0_poisson /= 1
+        means = [10*(i) for i in range(9)]  # Until 90min
+        sigs = [5 for i in range(9)]
+    elif timescale=="h":
+        lamb0_poisson /= 10
+        lamb0_poisson = 0.01
+        means = [120*(i) for i in range(5)]  # Until 600min
+        sigs = [60 for i in range(5)]
+    elif timescale=="d":
+        lamb0_poisson /= 100
+        means = [60*24*(i) for i in range(7)]  # Until 86400min
+        sigs = [60*24/2 for i in range(7)]
+
+    means = np.array(means)
+    sigs = np.array(sigs)
+
+    alpha0 = 1.  # Uniform beta or Dirichlet prior
+
+    arrR = [1., 0.5, 0., 1.5]
+    sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
+    particle_num = 20  # Like 10 simultaneous runs
+    multivariate_fit = True
+    simple_DP = False
+    printRes = True
+    eval_on_go = False
+
+    folder = "data/News/"
+    output_folder = "output/News/"
+    lg = XP
+    name_ds = f"News.txt"
+
+    t = time.time()
+    i = 0
+    nbRunsTot = len(arrR)
+
+    for r in arrR:
+        name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+                      f"r={np.round(r,1)}_multi={multivariate_fit}_samples={sample_num}_parts={particle_num}"
+
+        # import pprofile
+        # profiler = pprofile.Profile()
+        # with profiler:
+
+        observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+        DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+                      sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+                      vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,  eval_on_go=eval_on_go, indexToWd=indexToWd)
+
+
+        # profiler.print_stats()
+        # profiler.dump_stats("Benchmark.txt")
+        # pause()
+
+        i += 1
+        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+
+
+        for c in DHP.particles[0].active_clusters:
+            wds = [idx for _, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution))))))]
+            print([indexToWd[idx] for idx in wds][:10],
+                  len(DHP.particles[0].clusters[c].word_distribution.nonzero()[0]), vocabulary_size)
 
