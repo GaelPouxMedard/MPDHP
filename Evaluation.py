@@ -541,7 +541,7 @@ if __name__=="__main__":
                 matStd[:] = np.nan
                 lab_arr_perc_rand = {}
 
-                for words_per_obs in [50, 5, 10, 20]:
+                for words_per_obs in [5, 10, 50]:
                     for i_perc_rand,perc_rand in enumerate(arr_perc_rand):
                         perc_rand = np.round(perc_rand, 2)
 
