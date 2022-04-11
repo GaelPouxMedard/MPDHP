@@ -671,7 +671,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 		DHP.sequential_monte_carlo(doc, threshold)
 
 
-		if (i%1000==1 and printRes) or (i>0 and not eval_on_go):
+		if (i%1000==1 and printRes) or (i%100==1 and not eval_on_go):
 			clusPop = []
 			for c in DHP.particles[0].clusters:
 				clusPop.append(DHP.particles[0].docs2cluster_ID.count(c))
