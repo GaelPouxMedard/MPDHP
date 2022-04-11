@@ -12,7 +12,7 @@ from scipy.stats import sem
 from wordcloud import WordCloud
 import multidict as multidict
 import re
-import matplotlib.patheffects as pe
+import datetime
 
 
 def ensureFolder(folder):
@@ -52,7 +52,7 @@ def readObservations(folder, name_ds, output_folder):
             tup = (i, timestamp, [uniquewords, cntwords], [clusTxt, clusTmp])
             observations.append(tup)
 
-            if 'Covid' in dataFile and i>10000 and False:  # ============================================
+            if 'Covid' in dataFile and i>10000 and True:  # ============================================
                 print("BROKEN ===")
                 break
 
@@ -90,7 +90,7 @@ def read_particles(folderOut, nameOut, time=-1, get_clusters=False, only_pop_clu
 
     popClus, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
     selected_clus = [clus for _, clus in sorted(zip(cnt, popClus), reverse=True)][:20]
-    print(sorted(cnt, reverse=True))
+    print(sorted(cnt, reverse=True)[:50])
     #pause()
 
     if get_clusters:
@@ -117,6 +117,9 @@ def read_clusters(file_cluster):
 
     return cluster
 
+# =========== PLOTS =============
+
+# Wordsclouds
 def getFrequencyDictForText(words):
     fullTermsDict = multidict.MultiDict()
     tmpDict = {}
@@ -137,7 +140,7 @@ def makeWordCloud(dictWordsFreq):
     x, y = np.ogrid[:1000, :1000]
     mask = (x - 500) ** 2 + (y - 500) ** 2 > 500 ** 2
     mask = 255 * mask.astype(int)
-    wc = WordCloud(background_color="white", max_words=500, mask=mask, colormap="cividis")
+    wc = WordCloud(background_color="white", max_words=500, mask=mask, colormap="twilight")  #"cividis")
     # generate word cloud
     wc.generate_from_frequencies(dictWordsFreq)
 
@@ -146,21 +149,130 @@ def makeWordCloud(dictWordsFreq):
     plt.tight_layout()
     plt.axis("off")
 
+# Kernel
+def plot_kernel(c, DHP, consClus):
+    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
+    active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+    weigths = np.zeros((len(consClus), len(means)))
+    div = np.zeros((len(consClus)))
+    indToClus = {int(c): i for i,c in enumerate(consClus)}
+    for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:1000, 1]):  # ================================== :1000
+        active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
+        active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
+        timeseq = active_timestamps_cons[:, 1]
+        clusseq = active_timestamps_cons[:, 0]
+        if len(timeseq)<=1: continue
+        time_intervals = timeseq[-1] - timeseq[:-1]
+        if len(time_intervals)!=0:
+            RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+            for (clus, trig) in zip(clusseq, RBF):
+                if clus not in DHP.particles[0].clusters[c].alpha_final:
+                    continue
+                indclus = indToClus[int(clus)]
+                #print(weigths.shape, trig.shape, DHP.particles[0].clusters[c].alpha_final[clus].shape)
+                weigths[indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]  # [0] bc on multiplie déjà
+                div[indclus] += 1  # Because if perfect correlation, lambda_max=cst bc bounded by 1, due to rescaling a constant value is enough here.
+
+    weigths = weigths.sum(axis=-1)  # Sum over RBF kernel
+    weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
+    #weigths *= 100  # Rescale absolute (to compare the different figures)
+    weigths/=(np.max(weigths)+1e-20)  # Rescale for each column of RBF kernel (also only Siths deal in absolutes)
+    print(weigths)
+
+    dt = np.linspace(0, np.max(means)+np.max(sigs), 1000)
+    trigger = RBF_kernel(means, dt, sigs)
+    for index, influencer_clus in enumerate(consClus):
+        if influencer_clus not in DHP.particles[0].clusters[c].alpha_final:
+            continue
+        trigger_clus = trigger.dot(DHP.particles[0].clusters[c].alpha_final[influencer_clus])
+
+        alpha = weigths[indToClus[influencer_clus]]
+        if alpha<5e-3: continue
+
+        plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=alpha, c=f"C{index}")
+    leg = plt.legend()
+    for lh in leg.legendHandles:
+        lh.set_alpha(1)
+
+# Real timeline
+def plot_real_timeline(c, DHP, consClus):
+    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
+    active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+    indToClus = {int(c): i for i,c in enumerate(consClus)}
+    times_cons = []
+    dt = 15  # 1 obs every 15 minute
+    for ind, x_i in enumerate(active_timestamps[active_timestamps[:, 0]==c][:, 1]):
+        if len(times_cons) == 0:
+            times_cons.append(x_i)
+        elif x_i>times_cons[-1]+dt:
+            times_cons.append(x_i)
+
+    #times_cons = np.linspace(np.min(active_timestamps[:, 1]), np.max(active_timestamps[:, 1]), 1000)
+    #plt.plot([np.min(active_timestamps[active_timestamps[:, 0]==c][:, 1])]*2, [0,1], "-k")
+
+    array_intensity = []
+    array_times = []
+    for t in times_cons:
+        active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>t-np.max(means)-np.max(sigs)]
+        active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<t]
+        timeseq = active_timestamps_cons[:, 1]
+        clusseq = active_timestamps_cons[:, 0]
+        unweighted_triggering_kernel = np.zeros((len(consClus), len(means)))
+        if len(timeseq)<=1: continue
+        time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
+
+        RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+        for (clus, trig) in zip(clusseq, RBF):
+            indclus = indToClus[int(clus)]
+            unweighted_triggering_kernel[indclus] += trig
+
+        alpha_recomp = np.zeros(shape=unweighted_triggering_kernel.shape)
+        for clus in set(clusseq):
+            if clus not in DHP.particles[0].clusters[c].alpha_final:
+                continue
+            indclus = indToClus[int(clus)]
+            alpha_recomp[indclus] = DHP.particles[0].clusters[c].alpha_final[clus]
+
+        array_times.append(t)
+        array_intensity.append(np.sum(unweighted_triggering_kernel*alpha_recomp, axis=1))
+
+
+    array_intensity = np.array(array_intensity)
+    plotted = False
+    for influencer_clus in consClus:
+        if len(array_intensity)>0:
+            plt.plot(array_times, array_intensity[:, indToClus[influencer_clus]], "-", label=f"Cluster {influencer_clus}")
+            plotted = True
+    #plt.legend()
+    if not plotted:
+        return
+
+    limleft = datetime.datetime.timestamp(datetime.datetime.strptime('01/08/21', '%d/%m/%y'))/60  # In minutes
+    plt.xlim(left=limleft)
+
+    dt = 24*60  # day
+    x_ticks = [limleft]
+    while x_ticks[-1]<np.max(array_times):
+        x_ticks.append(x_ticks[-1]+dt)
+    x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d/%m/%y") for ts in x_ticks]
+    plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
 
 if __name__=="__main__":
     try:
         RW = sys.argv[1]
         XP = sys.argv[2]
     except:
-        RW = "0"
-        XP = "7"
+        RW = "1"
+        XP = "en"
 
-    num_NMI_last = 5000000000  # ======================================================================================================
-    norm_err = 0.2  # ======================================================================================================
 
 
     if RW=="0":
         if True:
+            num_NMI_last = 5000000000  # ======================================================================================================
+            norm_err = 0.2  # ======================================================================================================
+
+
             nbClasses = 2
             num_obs = 5000
 
@@ -1075,8 +1187,8 @@ if __name__=="__main__":
             timescale = sys.argv[3]
             theta0 = float(sys.argv[4])
         except:
-            timescale = "min"
-            theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
+            timescale = "h"
+            theta0 = 0.0001
 
         if True:
             if timescale=="min":
@@ -1097,9 +1209,9 @@ if __name__=="__main__":
 
             alpha0 = 1.  # Uniform beta or Dirichlet prior
 
-            arrR = [0., 0.5, 1., 1.5]
+            arrR = [0.5, 1., 0., 1.5]
             sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
-            particle_num = 20  # Like 10 simultaneous runs
+            particle_num = 20
             multivariate = True
 
             folder = "data/Covid/"
@@ -1107,11 +1219,10 @@ if __name__=="__main__":
 
             lang = XP
             name_ds = f"COVID-19-events_{lang}.txt"
-            results_folder = f"temp/MPDHP/results/Covid/{lang}/{timescale}/"
+            results_folder = f"temp/MPDHP/results/Covid/{lang}/{timescale}/{np.round(theta0, 4)}/"
             ensureFolder(results_folder+"Clusters/")
 
         for r in arrR:
-            r = 1.
             name_output = f"COVID-19-events_{lang}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                           f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
@@ -1122,86 +1233,38 @@ if __name__=="__main__":
             print(f"-------- {r} ---------")
 
 
+            lg = len(observations)
+            consClus = list(set(list(DHP.particles[0].clusters.keys())))
+            for i in reversed(range(len(consClus))):
+                if DHP.particles[0].docs2cluster_ID.count(consClus[i])<100:
+                    consClus.remove(consClus[i])
+
             scale = 4
-            for c in sorted(DHP.particles[0].clusters):
+            for c in sorted(DHP.particles[0].clusters, reverse=False):
                 if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
                     continue
 
-                plt.figure(figsize=(1*scale, 3*scale))
+
+                fig = plt.figure(figsize=(1*scale, 3*scale))
+
+                print(f"Cluster {c}a")
                 plt.subplot(3,1,1)
-                plt.title(f"Cluster {c}")
+                plt.title(f"Cluster {c} - {DHP.particles[0].docs2cluster_ID.count(c)} obs")
                 wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+
                 makeWordCloud(wds)
 
+                print(f"Cluster {c}b")
                 plt.subplot(3,1,2)
-
-                lg = len(observations)
-                consClus = list(DHP.particles[0].clusters[c].alpha_final.keys())
-
-                active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
-                active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
-                unweighted_triggering_kernel = np.zeros((len(consClus), len(means)))
-                div = np.zeros((len(consClus)))
-                indToClus = {int(c): i for i,c in enumerate(consClus)}
-                for i in range(1, len(active_timestamps)):
-                    if active_timestamps[i,0]!=c: continue  # Influence on c only
-                    active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i,1]-np.max(means)-3*np.max(sigs)]
-                    active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
-                    timeseq = active_timestamps_cons[:, 1]
-                    clusseq = active_timestamps_cons[:, 0]
-                    time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
-                    if len(time_intervals)!=0:
-                        RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
-                        for (clus, trig) in zip(clusseq, RBF):
-                            indclus = indToClus[int(clus)]
-                            unweighted_triggering_kernel[indclus][0] += trig.dot(DHP.particles[0].clusters[c].alpha_final[clus])  # [0] bc on multiplie déjà
-                            div[indclus] += 1
-
-                unweighted_triggering_kernel = np.sum(unweighted_triggering_kernel, axis=-1)
-                unweighted_triggering_kernel /= (div+1e-20)  # Only Siths deal in absolutes
-                print(unweighted_triggering_kernel)
-                unweighted_triggering_kernel/=(np.max(unweighted_triggering_kernel)+1e-20)
-
-                dt = np.linspace(0, np.max(means)+3*np.max(sigs), 1000)
-                trigger = RBF_kernel(means, dt, sigs)
-                for influencer_clus in DHP.particles[0].clusters[c].alpha_final:
-                    trigger_clus = trigger.dot(DHP.particles[0].clusters[c].alpha_final[influencer_clus])
-                    alpha = unweighted_triggering_kernel[indToClus[influencer_clus]]
-                    if alpha<1e-5: continue
-                    plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=alpha)
-                plt.legend()
+                plot_kernel(c, DHP, consClus)
 
 
+
+                print(f"Cluster {c}c")
                 plt.subplot(3, 1, 3)
+                plot_real_timeline(c, DHP, consClus)
 
-                array_intensity = []
-                array_times = []
-                for t in np.linspace(np.min(active_timestamps[:, 1]), np.max(active_timestamps[:, 1]), 1000):
-                    active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>t-np.max(means)-3*np.max(sigs)]
-                    active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<t]
-                    timeseq = active_timestamps_cons[:, 1]
-                    clusseq = active_timestamps_cons[:, 0]
-                    unweighted_triggering_kernel = np.zeros((len(consClus), len(means)))
-                    if len(timeseq)<=1: continue
-                    time_intervals = timeseq[-1] - timeseq[timeseq<timeseq[-1]]
-
-                    RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
-                    for (clus, trig) in zip(clusseq, RBF):
-                        indclus = indToClus[int(clus)]
-                        unweighted_triggering_kernel[indclus] += trig
-
-                    array_times.append(timeseq[-1])
-                    array_intensity.append(unweighted_triggering_kernel.dot(DHP.particles[0].clusters[c].alpha_final[clus]))
-
-
-                array_intensity = np.array(array_intensity)
-                for influencer_clus in indToClus:
-                    plt.plot(array_times, array_intensity[:, indToClus[influencer_clus]], "-o", markersize=2, label=f"Cluster {influencer_clus}")
-                plt.legend()
-
-
-
-                plt.tight_layout()
+                fig.tight_layout()
                 plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
                 #plt.show()
                 plt.close()
