@@ -341,58 +341,60 @@ if RW=="0":
         output_folder += "XP4/"
 
         arr_perc_rand = np.linspace(0, 1, 6)
+        arrWdsPerObs = [5, 10, 50]
         arrR = np.linspace(0, 7, 15)
         words_per_obs = 50
 
         t = time.time()
         i = 0
-        nbRunsTot = nbDS*len(arr_perc_rand)*len(arrR)
+        nbRunsTot = nbDS*len(arr_perc_rand)*len(arrR)*len(arrWdsPerObs)
 
-        for DS in range(nbDS):
-            for perc_rand in arr_perc_rand:
-                perc_rand = np.round(perc_rand, 2)
+        for words_per_obs in arrWdsPerObs:
+            for DS in range(nbDS):
+                for perc_rand in arr_perc_rand:
+                    perc_rand = np.round(perc_rand, 2)
 
-                params = (folder, DS, nbClasses, num_obs, multivariate,
-                          overlap_voc, overlap_temp, perc_rand,
-                          voc_per_class, words_per_obs, theta0,
-                          lamb0_poisson, lamb0_classes, alpha0, means, sigs)
+                    params = (folder, DS, nbClasses, num_obs, multivariate,
+                              overlap_voc, overlap_temp, perc_rand,
+                              voc_per_class, words_per_obs, theta0,
+                              lamb0_poisson, lamb0_classes, alpha0, means, sigs)
 
-                success = generate(params)
-                if success==-1: continue
-                name_ds, observations, vocabulary_size = getData(params)
-                name_ds = name_ds.replace("_events.txt", "")
+                    success = generate(params)
+                    if success==-1: continue
+                    name_ds, observations, vocabulary_size = getData(params)
+                    name_ds = name_ds.replace("_events.txt", "")
 
-                for r in arrR:
-                    print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
-                    r = np.round(r, 2)
+                    for r in arrR:
+                        print(f"DS {DS} - perc rand = {perc_rand} - r = {r}")
+                        r = np.round(r, 2)
 
-                    name_output = f"{name_ds}_r={r}" \
-                                  f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
-                                  f"_samplenum={sample_num}_particlenum={particle_num}"
+                        name_output = f"{name_ds}_r={r}" \
+                                      f"_theta0={theta0}_alpha0={alpha0}_lamb0={lamb0_poisson}" \
+                                      f"_samplenum={sample_num}_particlenum={particle_num}"
 
-                    for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
-                        if multivariate_fit and not simple_DP:
-                            output_folder_model = output_folder + "MPDHP/"
-                            lamb0_poisson_used = lamb0_poisson
-                        if not multivariate_fit and not simple_DP:
-                            output_folder_model = output_folder + "PDHP/"
-                            lamb0_poisson_used = lamb0_poisson
-                        if simple_DP:
-                            output_folder_model = output_folder + "PDP/"
-                            lamb0_poisson_used = lamb0_poisson*100
+                        for (multivariate_fit, simple_DP) in [(True, False), (False, False), (False, True)]:
+                            if multivariate_fit and not simple_DP:
+                                output_folder_model = output_folder + "MPDHP/"
+                                lamb0_poisson_used = lamb0_poisson
+                            if not multivariate_fit and not simple_DP:
+                                output_folder_model = output_folder + "PDHP/"
+                                lamb0_poisson_used = lamb0_poisson
+                            if simple_DP:
+                                output_folder_model = output_folder + "PDP/"
+                                lamb0_poisson_used = lamb0_poisson*100
 
-                        if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
-                            if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
-                                print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
-                                run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
-                                        theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
-                                        printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
-                                        eval_on_go=eval_on_go)
+                            if (not simple_DP) or (simple_DP and r>1-1e-5 and r<1+1e-5):
+                                if (multivariate_fit) or (not multivariate_fit and r>1-1e-5 and r<1+1e-5):
+                                    print(f"r = {r} - Multivariate={multivariate_fit} - Simple DP={simple_DP}")
+                                    run_fit(observations, output_folder_model, name_output, lamb0_poisson_used, means, sigs, r=r,
+                                            theta0=theta0, alpha0=alpha0, sample_num=sample_num, particle_num=particle_num,
+                                            printRes=printRes, vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,
+                                            eval_on_go=eval_on_go)
 
 
-                    i += 1
-                    print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
-                          f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
+                        i += 1
+                        print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
+                              f"ELAPSED TIME: {np.round((time.time()-t)/(3600), 2)}h")
 
     # Univariate
     def XP5(folder, output_folder):
