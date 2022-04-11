@@ -672,10 +672,14 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 
 		if (i%1000==1 and printRes) or (i>0 and not eval_on_go):
+			clusPop = []
+			for c in DHP.particles[0].clusters:
+				clusPop.append(DHP.particles[0].docs2cluster_ID.count(c))
+			clusPop = sorted(clusPop, reverse=True)
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
 				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
 				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
-				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)}')
+				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)} - Pop = {clusPop}')
 
 
 		if eval_on_go and printRes:
