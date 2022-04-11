@@ -563,7 +563,7 @@ else:
         sigs = [5 for i in range(9)]
     elif timescale=="h":
         lamb0_poisson /= 10
-        lamb0_poisson = 0.1
+        lamb0_poisson = 0.01
         means = [120*(i) for i in range(5)]  # Until 600min
         sigs = [60 for i in range(5)]
     elif timescale=="d":
