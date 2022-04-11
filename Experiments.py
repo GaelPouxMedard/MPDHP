@@ -665,7 +665,7 @@ elif RW=="2":
     folder = "data/News/"
     output_folder = "output/News/"
     lg = XP
-    name_ds = f"News.txt"
+    name_ds = f"allNews.txt"
 
     t = time.time()
     i = 0
