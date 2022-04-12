@@ -61,7 +61,6 @@ for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", 
                 counts[wd] += 1
     print(month, len(counts), len([cnt for cnt in counts.values() if cnt>25]))
     print(cntSub)
-pause()
 
 with open("allNews.txt", "w+", encoding="utf-8") as o:
     allData = 0
@@ -70,6 +69,8 @@ with open("allNews.txt", "w+", encoding="utf-8") as o:
             for line in f:
                 infos = line.split("\t")
                 time = float(infos[1])/60  # In minutes
+                if infos[2] != "news":
+                    continue
                 text = treatText(infos[3])
                 #print(line)
                 allData += 1

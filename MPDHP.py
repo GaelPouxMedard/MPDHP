@@ -30,7 +30,6 @@ class Dirichlet_Hawkes_Process(object):
 		self.theta0 = theta0
 		self.alpha0 = alpha0
 		self.reference_time = reference_time
-		self.updateKernelEvery = 50
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
 		self.horizon = (max(self.reference_time)+max(self.bandwidth))
@@ -242,9 +241,6 @@ class Dirichlet_Hawkes_Process(object):
 		return particle
 
 	def parameter_estimation(self, particle, selected_cluster_index):
-		if (not particle.num_obs_cluster[selected_cluster_index]%self.updateKernelEvery==0) and particle.clusters[selected_cluster_index].alpha is not None:  # Update alpha every 10 new observations in the cluster
-			return particle.clusters[selected_cluster_index].alpha
-
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, selected_cluster_index, self.reference_time, self.bandwidth, self.base_intensity, T, multivariate=self.multivariate)
 		alpha = update_triggering_kernel_optim(particle, particle.clusters[selected_cluster_index])
