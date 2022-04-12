@@ -1,6 +1,6 @@
 import os
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '10'
+os.environ['MKL_NUM_THREADS'] = '10'
 import numpy as np
 import sys
 from Generate_data import generate
@@ -675,19 +675,19 @@ elif RW=="2":
         name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                       f"r={np.round(r,1)}_multi={multivariate_fit}_samples={sample_num}_parts={particle_num}"
 
-        import pprofile
-        profiler = pprofile.Profile()
-        with profiler:
+        # import pprofile
+        # profiler = pprofile.Profile()
+        # with profiler:
 
-            observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-            DHP = run_fit(observations[:500], output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
-                          sample_num=sample_num, particle_num=particle_num, printRes=printRes,
-                          vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,  eval_on_go=eval_on_go, indexToWd=indexToWd)
+        observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+        DHP = run_fit(observations[:50], output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+                      sample_num=sample_num, particle_num=particle_num, printRes=printRes,
+                      vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,  eval_on_go=eval_on_go, indexToWd=indexToWd)
 
 
-        profiler.print_stats()
-        profiler.dump_stats("Benchmark.txt")
-        pause()
+        # profiler.print_stats()
+        # profiler.dump_stats("Benchmark_small.txt")
+        # pause()
 
         i += 1
         print(f"------------------------- r={r} - REMAINING TIME: {np.round((time.time()-t)*(nbRunsTot-i)/((i+1e-20)*3600), 2)}h - "
