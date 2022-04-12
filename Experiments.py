@@ -45,8 +45,8 @@ def readObservations(folder, name_ds, output_folder):
 
             if i > 1000:
                 pass
-                #print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
-                #break
+                print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
+                break
 
     with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "w+", encoding="utf-8") as f:
         for wd in wdToIndex:
@@ -647,7 +647,6 @@ elif RW=="2":
         sigs = [5 for i in range(9)]
     elif timescale=="h":
         lamb0_poisson /= 10
-        lamb0_poisson = 0.001
         means = [120*(i) for i in range(5)]  # Until 600min
         sigs = [60 for i in range(5)]
     elif timescale=="d":
@@ -661,8 +660,8 @@ elif RW=="2":
     alpha0 = 0.5  # Beta or Dirichlet prior
 
     arrR = [1., 0.5, 0., 1.5]
-    sample_num = 1000000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~5000000 samples => sample_num/(5*len(mean))~200000 samples per float
-    particle_num = 10  # Like 10 simultaneous runs ==========================================
+    sample_num = 500000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~5000000 samples => sample_num/(5*len(mean))~200000 samples per float
+    particle_num = 8  # Like 10 simultaneous runs ==========================================
     multivariate_fit = True
     simple_DP = False
     printRes = True

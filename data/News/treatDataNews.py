@@ -46,16 +46,22 @@ def treatText(txt):
 
 
 counts = {}
+cntSub = {}
 for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
     with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
         for line in f:
             infos = line.split("\t")
             text = treatText(infos[3])
 
+            if infos[2] not in cntSub: cntSub[infos[2]] = 0
+            cntSub[infos[2]] += 1
+
             for wd in text.split(" "):
                 if wd not in counts: counts[wd] = 0
                 counts[wd] += 1
     print(month, len(counts), len([cnt for cnt in counts.values() if cnt>25]))
+    print(cntSub)
+pause()
 
 with open("allNews.txt", "w+", encoding="utf-8") as o:
     allData = 0

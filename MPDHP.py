@@ -30,7 +30,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.theta0 = theta0
 		self.alpha0 = alpha0
 		self.reference_time = reference_time
-		self.updateKernelEvery = 20
+		self.updateKernelEvery = 50
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
 		self.horizon = (max(self.reference_time)+max(self.bandwidth))

@@ -146,7 +146,7 @@ def getFrequencyDictForText(words):
         fullTermsDict.add(key, tmpDict[key])
     return fullTermsDict
 
-def makeWordCloud(dictWordsFreq):
+def makeWordCloud(dictWordsFreq, onlyreturnImg=False):
     #alice_mask = np.array(Image.open("alice_mask.png"))
 
     x, y = np.ogrid[:1000, :1000]
@@ -156,13 +156,16 @@ def makeWordCloud(dictWordsFreq):
     # generate word cloud
     wc.generate_from_frequencies(dictWordsFreq)
 
+    if onlyreturnImg:
+        return wc
+
     # show
     plt.imshow(wc, interpolation="bilinear")
     plt.tight_layout()
     plt.axis("off")
 
 # Kernel
-def plot_kernel(c, DHP, consClus):
+def plot_kernel(c, DHP, observations, consClus):
     active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
     active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
     weigths = np.zeros((len(consClus), len(means)))
@@ -211,7 +214,7 @@ def plot_kernel(c, DHP, consClus):
         lh.set_alpha(1)
 
 # Real timeline
-def plot_real_timeline(c, DHP, consClus, datebeg="01/08/21"):
+def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
     active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
     active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
     indToClus = {int(c): i for i,c in enumerate(consClus)}
@@ -275,6 +278,104 @@ def plot_real_timeline(c, DHP, consClus, datebeg="01/08/21"):
         x_ticks.append(x_ticks[-1]+dt)
     x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d/%m/%y") for ts in x_ticks]
     plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
+
+# Plot each cluster
+def plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=100):
+    consClus = list(set(list(DHP.particles[0].clusters.keys())))
+    for i in reversed(range(len(consClus))):
+        if DHP.particles[0].docs2cluster_ID.count(consClus[i])<thresSize:
+            pass
+            consClus.remove(consClus[i])
+
+    scale = 4
+    for c in sorted(DHP.particles[0].clusters, reverse=False):
+        if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
+            continue
+        if c not in consClus:
+            continue
+
+
+        fig = plt.figure(figsize=(1*scale, 3*scale))
+
+        print(f"Cluster {c}a")
+        plt.subplot(3,1,1)
+        plt.title(f"Cluster {c} - {DHP.particles[0].docs2cluster_ID.count(c)} obs")
+        wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+        makeWordCloud(wds)
+
+        print(f"Cluster {c}b")
+        plt.subplot(3,1,2)
+        plot_kernel(c, DHP, observations, consClus)
+
+        print(f"Cluster {c}c")
+        plt.subplot(3, 1, 3)
+        plot_real_timeline(c, DHP, observations, consClus, datebeg="01/01/19")
+
+        fig.tight_layout()
+        plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
+        #plt.show()
+        plt.close()
+
+
+# Plot... Graphe topics, bah oui
+def plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=100):
+    consClus = list(set(list(DHP.particles[0].clusters.keys())))
+    for i in reversed(range(len(consClus))):
+        if DHP.particles[0].docs2cluster_ID.count(consClus[i])<thresSize:
+            pass
+            consClus.remove(consClus[i])
+
+    clusToInd = {int(c): i for i,c in enumerate(consClus)}
+
+    A = np.zeros((len(consClus), len(consClus)))
+    for c in DHP.particles[0].clusters:
+        if c not in consClus: continue
+
+        wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+        imgWC = makeWordCloud(wds)
+
+
+        active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
+        active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+
+        weigths = np.zeros((len(consClus), len(means)))
+        div = np.zeros((len(consClus)))
+        for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:1000, 1]):  # ================================== :1000
+            active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
+            active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
+            timeseq = active_timestamps_cons[:, 1]
+            clusseq = active_timestamps_cons[:, 0]
+            if len(timeseq)<=0: continue
+            time_intervals = timeseq[-1] - timeseq[:-1]
+            if len(time_intervals)!=0:
+                RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+                for (clus, trig) in zip(clusseq, RBF):
+                    if clus not in DHP.particles[0].clusters[c].alpha_final:
+                        continue
+                    indclus = clusToInd[int(clus)]
+                    #print(weigths.shape, trig.shape, DHP.particles[0].clusters[c].alpha_final[clus].shape)
+                    weigths[indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]  # [0] bc on multiplie déjà
+                    div[indclus] += 1  # Because if perfect correlation, lambda_max=cst bc bounded by 1, due to rescaling a constant value is enough here.
+
+        weigths = weigths.sum(axis=-1)  # Sum over RBF kernel
+        weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
+        #weigths *= 100  # Rescale absolute (to compare the different figures)
+        weigths/=(np.max(weigths)+1e-20)  # Rescale for each column of RBF kernel (also only Siths deal in absolutes)
+
+        print(weigths)
+
+        pause()
+
+        for c2 in DHP.particles[0].clusters[c].alpha_final:
+            if c2 not in consClus: continue
+
+            x = 0
+
+
+            A[clusToInd[c],clusToInd[c2]] = x
+
+
+
 
 if __name__=="__main__":
     try:
@@ -1230,37 +1331,22 @@ if __name__=="__main__":
             alpha0 = 0.5  # Uniform beta or Dirichlet prior
 
             arrR = [1., 0.5, 0., 1.5]
-            sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
-            sample_num = 1000000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
-            particle_num = 20
+            sample_num = 1000000  # ~1000000/(15*15*5)= samples per float
             particle_num = 10
             multivariate = True
 
-            folder = "data/Covid/"
-            output_folder = "output/Covid/"
             folder = "data/News/"
             output_folder = "output/News/"
 
             lang = XP
-            name_ds = f"COVID-19-events_{lang}.txt"
             name_ds = f"allNews.txt"
-            results_folder = f"temp/MPDHP/results/Covid/{lang}/{timescale}/{np.round(theta0, 4)}/"
             results_folder = f"temp/MPDHP/results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
             ensureFolder(results_folder+"Clusters/")
 
         for r in arrR:
-            name_output = f"COVID-19-events_{lang}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
-                          f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
             name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                           f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
-
-            DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
-            for clus in DHP.particles[0].clusters:
-                for clus2 in DHP.particles[0].clusters[clus].alpha_final:
-                    if (clus==0 and clus2==2) or (clus==1 and clus2==2):
-                        print(clus, clus2, DHP.particles[0].clusters[clus].alpha_final[clus2])
-            #pause()
 
             observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
             DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
@@ -1269,41 +1355,19 @@ if __name__=="__main__":
             print(f"-------- {r} ---------")
 
 
-            lg = len(observations)
-            consClus = list(set(list(DHP.particles[0].clusters.keys())))
-            for i in reversed(range(len(consClus))):
-                if DHP.particles[0].docs2cluster_ID.count(consClus[i])<100:
-                    pass
-                    #consClus.remove(consClus[i])
+
+            #plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=100)
+            plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=100)
 
 
 
-            scale = 4
-            for c in sorted(DHP.particles[0].clusters, reverse=False):
-                if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
-                    continue
-
-
-                fig = plt.figure(figsize=(1*scale, 3*scale))
-
-                print(f"Cluster {c}a")
-                plt.subplot(3,1,1)
-                plt.title(f"Cluster {c} - {DHP.particles[0].docs2cluster_ID.count(c)} obs")
-                wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
-
-                makeWordCloud(wds)
-
-                print(f"Cluster {c}b")
-                plt.subplot(3,1,2)
-                plot_kernel(c, DHP, consClus)
 
 
 
-                print(f"Cluster {c}c")
-                plt.subplot(3, 1, 3)
-                plot_real_timeline(c, DHP, consClus, datebeg="01/01/19")
 
-                fig.tight_layout()
-                plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
-                #plt.show()
-                plt.close()
+
+
+
+
+
+
