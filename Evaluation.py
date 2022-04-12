@@ -151,7 +151,7 @@ def makeWordCloud(dictWordsFreq):
 
 # Kernel
 def plot_kernel(c, DHP, consClus):
-    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
+    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
     active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
     weigths = np.zeros((len(consClus), len(means)))
     div = np.zeros((len(consClus)))
@@ -177,7 +177,6 @@ def plot_kernel(c, DHP, consClus):
     weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
     #weigths *= 100  # Rescale absolute (to compare the different figures)
     weigths/=(np.max(weigths)+1e-20)  # Rescale for each column of RBF kernel (also only Siths deal in absolutes)
-    print(weigths)
 
     dt = np.linspace(0, np.max(means)+np.max(sigs), 1000)
     trigger = RBF_kernel(means, dt, sigs)
@@ -197,8 +196,8 @@ def plot_kernel(c, DHP, consClus):
         lh.set_alpha(1)
 
 # Real timeline
-def plot_real_timeline(c, DHP, consClus):
-    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID[:lg], observations[:, 1])))
+def plot_real_timeline(c, DHP, consClus, datebeg="01/08/21"):
+    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
     active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
     indToClus = {int(c): i for i,c in enumerate(consClus)}
     times_cons = []
@@ -249,7 +248,8 @@ def plot_real_timeline(c, DHP, consClus):
     if not plotted:
         return
 
-    limleft = datetime.datetime.timestamp(datetime.datetime.strptime('01/08/21', '%d/%m/%y'))/60  # In minutes
+    limleft = datetime.datetime.timestamp(datetime.datetime.strptime(datebeg, '%d/%m/%y'))/60  # In minutes
+    limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])*60))
     plt.xlim(left=limleft)
 
     dt = 24*60  # day
@@ -265,7 +265,7 @@ if __name__=="__main__":
         XP = sys.argv[2]
     except:
         RW = "1"
-        XP = "fr"
+        XP = "osef"
 
 
 
@@ -1190,7 +1190,7 @@ if __name__=="__main__":
             theta0 = float(sys.argv[4])
         except:
             timescale = "h"
-            theta0 = 0.01
+            theta0 = 0.1
 
         if True:
             if timescale=="min":
@@ -1199,6 +1199,7 @@ if __name__=="__main__":
                 sigs = [5 for i in range(9)]
             elif timescale=="h":
                 lamb0_poisson /= 10
+                lamb0_poisson = 0.001
                 means = [120*(i) for i in range(5)]  # Until 600min
                 sigs = [60 for i in range(5)]
             elif timescale=="d":
@@ -1211,22 +1212,35 @@ if __name__=="__main__":
 
             alpha0 = 1.  # Uniform beta or Dirichlet prior
 
-            arrR = [0.5, 1., 0., 1.5]
+            arrR = [1., 0.5, 0., 1.5]
             sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
             particle_num = 20
             multivariate = True
 
             folder = "data/Covid/"
             output_folder = "output/Covid/"
+            folder = "data/News/"
+            output_folder = "output/News/"
 
             lang = XP
             name_ds = f"COVID-19-events_{lang}.txt"
+            name_ds = f"allNews.txt"
             results_folder = f"temp/MPDHP/results/Covid/{lang}/{timescale}/{np.round(theta0, 4)}/"
+            results_folder = f"temp/MPDHP/results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
             ensureFolder(results_folder+"Clusters/")
 
         for r in arrR:
             name_output = f"COVID-19-events_{lang}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                           f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
+
+
+            DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
+            for clus in DHP.particles[0].clusters:
+                for clus2 in DHP.particles[0].clusters[clus].alpha_final:
+                    if clus<=3 and clus2<=3:
+                        print(clus, clus2, DHP.particles[0].clusters[clus].alpha_final[clus2])
+                print()
+            pause()
 
             observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
             DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
@@ -1241,13 +1255,7 @@ if __name__=="__main__":
                 if DHP.particles[0].docs2cluster_ID.count(consClus[i])<100:
                     consClus.remove(consClus[i])
 
-            for c in sorted(DHP.particles[0].clusters, reverse=False):
-                for c2 in sorted(DHP.particles[0].clusters[c].alpha_final, reverse=False):
-                    if c<5 and c2<5:
-                        print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
-                print()
 
-            pause()
 
             scale = 4
             for c in sorted(DHP.particles[0].clusters, reverse=False):
@@ -1276,7 +1284,7 @@ if __name__=="__main__":
 
                 print(f"Cluster {c}c")
                 plt.subplot(3, 1, 3)
-                plot_real_timeline(c, DHP, consClus)
+                plot_real_timeline(c, DHP, consClus, datebeg="01/01/19")
 
                 fig.tight_layout()
                 plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")

@@ -254,7 +254,7 @@ class Dirichlet_Hawkes_Process(object):
 			alpha[outIndex] *= 0
 
 		for clus in particle.active_clusters:
-			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]]
+			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]].copy()
 		#print(selected_cluster_index, particle.clusters[selected_cluster_index].alpha_final)
 
 		return alpha
@@ -673,7 +673,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 
 		if (i%1000==1 and printRes) or (i%100==1 and not eval_on_go):
 			clusPop = []
-			for c in DHP.particles[0].clusters:
+			for c in DHP.particles[0].clusters:  # Active clusters only bc others are discarded
 				clusPop.append(DHP.particles[0].docs2cluster_ID.count(c))
 			clusPop = sorted(clusPop, reverse=True)
 			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '

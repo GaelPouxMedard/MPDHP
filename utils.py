@@ -265,7 +265,6 @@ def update_cluster_likelihoods(active_timestamps, particle, selected_cluster_ind
 			cluster.triggers = np.tensordot(alphas, unweighted_triggering_kernel, axes=2)
 		else:  # Only consider the same cluster in likelihood computation
 			alpha_univ = alphas.copy()
-			alpha_univ = alphas.copy()
 			outIndex = [i for i in range(alphas.shape[1]) if i != selected_cluster_index-1]
 			alpha_univ[:, outIndex] *= 0
 			cluster.triggers = np.tensordot(alpha_univ, unweighted_triggering_kernel, axes=2)
