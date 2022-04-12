@@ -45,8 +45,8 @@ def readObservations(folder, name_ds, output_folder):
 
             if i > 1000:
                 pass
-                print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
-                break
+                # print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
+                # break
 
     with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "w+", encoding="utf-8") as f:
         for wd in wdToIndex:
