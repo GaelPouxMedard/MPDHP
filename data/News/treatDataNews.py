@@ -54,7 +54,7 @@ for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", 
             infos = line.split("\t")
 
             try:
-                if int(infos[5])<20:
+                if int(infos[5])<20:  # At least a difference of +20 upvotes
                     continue
             except:
                 continue
@@ -80,7 +80,7 @@ with open("allNews.txt", "w+", encoding="utf-8") as o:
                 infos = line.split("\t")
 
                 try:
-                    if int(infos[5])<20:
+                    if int(infos[5])<20:  # At least a difference of +20 upvotes
                         continue
                 except:
                     continue
