@@ -661,7 +661,7 @@ elif RW=="2":
 
     arrR = [1., 0.5, 0., 1.5]
     sample_num = 100000  # Typically 15 active clusters, so 15*15*len(mean)~1125 parameters to infer using sample_num*len(mean)~2000000 samples => sample_num/(15²*len(mean))~1777 samples per float
-    particle_num = 1  # Like 10 simultaneous runs ==========================================
+    particle_num = 8  # Like 8 simultaneous runs ==========================================
     multivariate_fit = True
     simple_DP = False
     printRes = True

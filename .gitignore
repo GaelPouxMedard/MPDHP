@@ -1,7 +1,9 @@
 /data/Synth/
 /data/Covid/COVID-19-Tweets-treated-wo-retweets_*
 /data/News/news_titles_RS_*
+/temp/
 /output/
 /results/
 /__pycache__/
 /.idea/
+output_covid.zip
