@@ -1227,14 +1227,13 @@ if __name__=="__main__":
             means = np.array(means)
             sigs = np.array(sigs)
 
-            alpha0 = 0.1  # Uniform beta or Dirichlet prior
+            alpha0 = 0.5  # Uniform beta or Dirichlet prior
 
-            arrR = [1.]#, 0.5, 0., 1.5]
-            print("REMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVE")
+            arrR = [1., 0.5, 0., 1.5]
             sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
             sample_num = 1000000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
             particle_num = 20
-            particle_num = 1
+            particle_num = 10
             multivariate = True
 
             folder = "data/Covid/"
