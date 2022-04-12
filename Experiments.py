@@ -68,7 +68,7 @@ try:
     RW = sys.argv[1]
     XP = sys.argv[2]
 except:
-    RW = "0"
+    RW = "2"
     XP = "1"
 
 
@@ -672,7 +672,7 @@ elif RW=="2":
     nbRunsTot = len(arrR)
 
     for r in arrR:
-        name_output = f"COVID-19-events_{lg}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+        name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                       f"r={np.round(r,1)}_multi={multivariate_fit}_samples={sample_num}_parts={particle_num}"
 
         # import pprofile
