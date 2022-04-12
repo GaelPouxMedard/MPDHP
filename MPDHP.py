@@ -243,7 +243,7 @@ class Dirichlet_Hawkes_Process(object):
 
 	def parameter_estimation(self, particle, selected_cluster_index):
 		if (not particle.num_obs_cluster[selected_cluster_index]%self.updateKernelEvery==0) and particle.clusters[selected_cluster_index].alpha is not None:  # Update alpha every 10 new observations in the cluster
-			return draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
+			return particle.clusters[selected_cluster_index].alpha
 
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, selected_cluster_index, self.reference_time, self.bandwidth, self.base_intensity, T, multivariate=self.multivariate)
@@ -255,16 +255,6 @@ class Dirichlet_Hawkes_Process(object):
 
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]].copy()
-
-		# if particle.index==0:
-		# 	if selected_cluster_index==1 or selected_cluster_index==2:
-		# 		pass
-		# 	#print(selected_cluster_index, len(particle.docs2cluster_ID), alpha)
-		# 	try:
-		# 		pass
-		# 		print("Diff", np.sum(np.abs(particle.clusters[1].alpha_final[1]-particle.clusters[2].alpha_final[1])))
-		# 	except Exception as e:
-		# 		pass
 
 		return alpha
 

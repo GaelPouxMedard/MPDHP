@@ -1331,8 +1331,8 @@ if __name__=="__main__":
             alpha0 = 0.5  # Uniform beta or Dirichlet prior
 
             arrR = [1., 0.5, 0., 1.5]
-            sample_num = 1000000  # ~1000000/(15*15*5)= samples per float
-            particle_num = 10
+            sample_num = 500000
+            particle_num = 8
             multivariate = True
 
             folder = "data/News/"
@@ -1357,7 +1357,7 @@ if __name__=="__main__":
 
 
             #plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=100)
-            plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=100)
+            plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=1)
 
 
 
