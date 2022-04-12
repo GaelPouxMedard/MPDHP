@@ -680,7 +680,7 @@ elif RW=="2":
         # with profiler:
 
         observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-        DHP = run_fit(observations[:50], output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
+        DHP = run_fit(observations, output_folder, name_output, lamb0_poisson, means, sigs, r=r, theta0=theta0, alpha0=alpha0,
                       sample_num=sample_num, particle_num=particle_num, printRes=printRes,
                       vocabulary_size=vocabulary_size, multivariate=multivariate_fit, simple_DP=simple_DP,  eval_on_go=eval_on_go, indexToWd=indexToWd)
 
