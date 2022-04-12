@@ -687,7 +687,7 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 				inferredClus = DHP.particles[0].docs2cluster_ID
 				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
-		if i%5000==1:
+		if i%1000==1:
 			saveDHP(DHP, folderOut, nameOut, date=-1)
 
 	saveDHP(DHP, folderOut, nameOut, date=-1)
