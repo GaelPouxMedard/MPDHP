@@ -86,18 +86,16 @@ with open("allNews.txt", "w+", encoding="utf-8") as o:
                     continue
 
                 time = float(infos[1])/60  # In minutes
-                if infos[2] != "news":
-                    pass
-                    #continue
+
                 text = treatText(infos[3])
                 #print(line)
                 allData += 1
 
-                text = [wd for wd in text.split(" ") if counts[wd]>20]
+                text = [wd for wd in text.split(" ") if counts[wd]>3]
                 if not len(text)>=3:
                     continue
 
                 o.write(f"{time}\t{','.join(text)}\n")
                 efflines += 1
 
-            print(month, efflines, len([wd for wd in counts if counts[wd]>20]))
+            print(month, efflines, len([wd for wd in counts if counts[wd]>3]))
