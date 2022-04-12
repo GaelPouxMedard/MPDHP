@@ -1307,7 +1307,7 @@ if __name__=="__main__":
             timescale = sys.argv[3]
             theta0 = float(sys.argv[4])
         except:
-            timescale = "h"
+            timescale = "min"
             theta0 = 0.1
 
         if True:
@@ -1317,7 +1317,6 @@ if __name__=="__main__":
                 sigs = [5 for i in range(9)]
             elif timescale=="h":
                 lamb0_poisson /= 10
-                lamb0_poisson = 0.001
                 means = [120*(i) for i in range(5)]  # Until 600min
                 sigs = [60 for i in range(5)]
             elif timescale=="d":
@@ -1330,8 +1329,8 @@ if __name__=="__main__":
 
             alpha0 = 0.5  # Uniform beta or Dirichlet prior
 
-            arrR = [1., 0.5, 0., 1.5]
-            sample_num = 500000
+            arrR = [1.]#, 0.5, 0., 1.5]
+            sample_num = 100000
             particle_num = 8
             multivariate = True
 
@@ -1356,8 +1355,8 @@ if __name__=="__main__":
 
 
 
-            #plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=100)
-            plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=1)
+            plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=1)
+            #plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=1)
 
 
 

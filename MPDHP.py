@@ -336,15 +336,6 @@ class Dirichlet_Hawkes_Process(object):
 			remaining_particles = [particle for i, particle in enumerate(particles) if weights[i] + 1e-5 > threshold ]
 			removed_particles = [particle for i, particle in enumerate(particles) if weights[i] + 1e-5 <= threshold ]
 			removed_indexes = [particle.index for particle in removed_particles]
-			remaining_files = []
-			for remaining_particle in remaining_particles:
-				for file in remaining_particle.files_clusters:
-					remaining_files.append(file[1])
-			for removed_particle in removed_particles:
-				for file in removed_particle.files_clusters:
-					if file[1] not in remaining_files:
-						os.remove(file[1])  # file[0] = index
-						remaining_files.append(file[1])
 
 			resample_probs = weights[np.where(weights + 1e-5 > threshold)]
 			resample_probs = resample_probs/np.sum(resample_probs)
