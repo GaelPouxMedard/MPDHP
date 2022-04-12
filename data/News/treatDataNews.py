@@ -47,10 +47,19 @@ def treatText(txt):
 
 counts = {}
 cntSub = {}
+cntCons = 0
 for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
     with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
         for line in f:
             infos = line.split("\t")
+
+            try:
+                if int(infos[5])<20:
+                    continue
+            except:
+                continue
+            cntCons += 1
+
             text = treatText(infos[3])
 
             if infos[2] not in cntSub: cntSub[infos[2]] = 0
@@ -59,25 +68,36 @@ for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", 
             for wd in text.split(" "):
                 if wd not in counts: counts[wd] = 0
                 counts[wd] += 1
-    print(month, len(counts), len([cnt for cnt in counts.values() if cnt>25]))
-    print(cntSub)
 
+    print(month, cntCons, cntSub)
+
+efflines = 0
 with open("allNews.txt", "w+", encoding="utf-8") as o:
     allData = 0
     for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
         with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
             for line in f:
                 infos = line.split("\t")
+
+                try:
+                    if int(infos[5])<20:
+                        continue
+                except:
+                    continue
+
                 time = float(infos[1])/60  # In minutes
                 if infos[2] != "news":
-                    continue
+                    pass
+                    #continue
                 text = treatText(infos[3])
                 #print(line)
                 allData += 1
 
-                text = [wd for wd in text.split(" ") if counts[wd]>100]
+                text = [wd for wd in text.split(" ") if counts[wd]>20]
+                if not len(text)>=3:
+                    continue
 
                 o.write(f"{time}\t{','.join(text)}\n")
+                efflines += 1
 
-                if allData%1000==0:
-                    print(month, allData, list(sorted(list(counts.values()), reverse=True))[:100])
+            print(month, efflines, len([wd for wd in counts if counts[wd]>20]))

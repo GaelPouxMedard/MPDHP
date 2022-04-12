@@ -660,7 +660,7 @@ elif RW=="2":
     alpha0 = 0.5  # Beta or Dirichlet prior
 
     arrR = [1., 0.5, 0., 1.5]
-    sample_num = 500000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~5000000 samples => sample_num/(5*len(mean))~200000 samples per float
+    sample_num = 100000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~5000000 samples => sample_num/(5*len(mean))~200000 samples per float
     particle_num = 8  # Like 10 simultaneous runs ==========================================
     multivariate_fit = True
     simple_DP = False
