@@ -55,8 +55,8 @@ class Particle(object):
 	def __repr__(self):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
-
-def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False, multivariate=True, index_cluster=None):
+# Dirichlet = get rid of spectral radius bias
+def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="dirichlet", return_priors=False, multivariate=True, index_cluster=None):
 	vec = None
 	prior = None
 	if alpha0==1.:
@@ -312,6 +312,8 @@ def update_triggering_kernel_optim(particle, cluster):
 	# 	if cluster.index in [1,2]:
 	# 		pass
 	# 		print(np.max(logLikelihood), np.max(logLikelihood[logLikelihood!=np.max(logLikelihood)]))
+	# 		print(1, np.sum(alphas[update_weight==np.max(update_weight)][0]))
+	# 		print(2, np.sum(alphas[update_weight==np.max(update_weight[update_weight!=np.max(update_weight)])][0]))
 	# 		print(cluster.index, alpha[0], alphas[update_weight==np.max(update_weight), 0], np.max(update_weight), np.max(update_weight[update_weight!=np.max(update_weight)]))
 	# except Exception as e:
 	# 	pass
