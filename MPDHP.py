@@ -664,45 +664,39 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 	t = time.time()
 
 
-	import pprofile
-	profiler = pprofile.Profile()
-	with profiler:
-
-		lgObs = len(observations)
-		trueClus = []
-		for i, news_item in enumerate(observations):
-			doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
-			DHP.sequential_monte_carlo(doc, threshold)
+	lgObs = len(observations)
+	trueClus = []
+	for i, news_item in enumerate(observations):
+		doc = parse_newsitem_2_doc(news_item = news_item, vocabulary_size = vocabulary_size)
+		DHP.sequential_monte_carlo(doc, threshold)
 
 
-			if (i%1000==1 and printRes) or (i%100==1 and not eval_on_go):
-				clusPop = []
-				for c in DHP.particles[0].clusters:
-					clusPop.append(DHP.particles[0].docs2cluster_ID.count(c))
-				clusPop = sorted(clusPop, reverse=True)
-				print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
-					  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
-					  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
-					  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)} - Pop = {clusPop}')
-				profiler.print_stats()
-				profiler.dump_stats(f"Benchmark_{i}.txt")
+		if (i%1000==1 and printRes) or (i%100==1 and not eval_on_go):
+			clusPop = []
+			for c in DHP.particles[0].clusters:
+				clusPop.append(DHP.particles[0].docs2cluster_ID.count(c))
+			clusPop = sorted(clusPop, reverse=True)
+			print(f'r={r} - Handling document {i}/{lgObs} (t={np.round(news_item[1]-observations[0][1], 1)}) - '
+				  f'Average time : {np.round((time.time()-t)*1000/(i), 0)}ms - '
+				  f'Remaining time : {np.round((time.time()-t)*(len(observations)-i)/(i*3600), 2)}h - '
+				  f'ClusTot={DHP.particles[0].cluster_num_by_now} - ActiveClus = {len(DHP.particles[0].active_clusters)} - Pop = {clusPop}')
 
 
-			if eval_on_go and printRes:
-				trueClus.append(int(float(news_item[-1][0])))
-				if (i%1000==1 and printRes) or (i>0 and False):
-					inferredClus = DHP.particles[0].docs2cluster_ID
-					print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
+		if eval_on_go and printRes:
+			trueClus.append(int(float(news_item[-1][0])))
+			if (i%1000==1 and printRes) or (i>0 and False):
+				inferredClus = DHP.particles[0].docs2cluster_ID
+				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
 
-				keys = DHP.particles[0].active_clusters.keys()
-				for c in keys:
-					for c2 in keys:
-						if c2 in DHP.particles[0].clusters[c].alpha_final:
-							pass
-							#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
+			keys = DHP.particles[0].active_clusters.keys()
+			for c in keys:
+				for c2 in keys:
+					if c2 in DHP.particles[0].clusters[c].alpha_final:
+						pass
+						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
 
-			if i%5000==1:
-				saveDHP(DHP, folderOut, nameOut, date=-1)
+		if i%5000==1:
+			saveDHP(DHP, folderOut, nameOut, date=-1)
 
 	saveDHP(DHP, folderOut, nameOut, date=-1)
 	return DHP
