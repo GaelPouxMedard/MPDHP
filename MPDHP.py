@@ -30,6 +30,7 @@ class Dirichlet_Hawkes_Process(object):
 		self.theta0 = theta0
 		self.alpha0 = alpha0
 		self.reference_time = reference_time
+		self.updateKernelEvery = 20
 		self.vocabulary_size = vocabulary_size
 		self.bandwidth = bandwidth
 		self.horizon = (max(self.reference_time)+max(self.bandwidth))
@@ -195,6 +196,9 @@ class Dirichlet_Hawkes_Process(object):
 			# Initialized in if==0
 			particle.active_timestamps = np.vstack((particle.active_timestamps, [selected_cluster_index, doc.timestamp]))
 
+		if selected_cluster_index not in particle.num_obs_cluster: particle.num_obs_cluster[selected_cluster_index]=0
+		particle.num_obs_cluster[selected_cluster_index] += 1
+
 		return particle, selected_cluster_index
 
 	def update_clusters_samples(self, particle):
@@ -238,12 +242,8 @@ class Dirichlet_Hawkes_Process(object):
 		return particle
 
 	def parameter_estimation(self, particle, selected_cluster_index):
-
-		# Observation is alone in the cluster => the cluster is new => random initialization of alpha
-		# Note that it cannot be a previously filled cluster since it would have 0 chance to get selected (see sampling_cluster_label)
-		# if particle.clusters[selected_cluster_index].alpha is None:
-		# 	alpha = draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
-		# 	return alpha
+		if (not particle.num_obs_cluster[selected_cluster_index]%self.updateKernelEvery==0) and particle.clusters[selected_cluster_index].alpha is not None:  # Update alpha every 10 new observations in the cluster
+			return draw_vectors(self.alpha0, num_samples=1, active_clusters=particle.active_clusters, size_kernel=len(self.reference_time))
 
 		T = self.active_interval[1]
 		particle.clusters[selected_cluster_index] = update_cluster_likelihoods(particle.active_timestamps, particle, selected_cluster_index, self.reference_time, self.bandwidth, self.base_intensity, T, multivariate=self.multivariate)
@@ -255,7 +255,16 @@ class Dirichlet_Hawkes_Process(object):
 
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]].copy()
-		#print(selected_cluster_index, particle.clusters[selected_cluster_index].alpha_final)
+
+		# if particle.index==0:
+		# 	if selected_cluster_index==1 or selected_cluster_index==2:
+		# 		pass
+		# 	#print(selected_cluster_index, len(particle.docs2cluster_ID), alpha)
+		# 	try:
+		# 		pass
+		# 		print("Diff", np.sum(np.abs(particle.clusters[1].alpha_final[1]-particle.clusters[2].alpha_final[1])))
+		# 	except Exception as e:
+		# 		pass
 
 		return alpha
 
@@ -687,13 +696,6 @@ def run_fit(observations, folderOut, nameOut, lamb0, means, sigs, r=1., theta0=N
 			if (i%1000==1 and printRes) or (i>0 and False):
 				inferredClus = DHP.particles[0].docs2cluster_ID
 				print("NMI", NMI(trueClus, inferredClus), " - NMI_last", NMI(trueClus[-1000:], inferredClus[-1000:]))
-
-			keys = DHP.particles[0].active_clusters.keys()
-			for c in keys:
-				for c2 in keys:
-					if c2 in DHP.particles[0].clusters[c].alpha_final:
-						pass
-						#print(c, c2, DHP.particles[0].clusters[c].alpha_final[c2])
 
 		if i%5000==1:
 			saveDHP(DHP, folderOut, nameOut, date=-1)

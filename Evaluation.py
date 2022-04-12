@@ -56,6 +56,10 @@ def readObservations(folder, name_ds, output_folder):
                 print("BROKEN ===")
                 break
 
+            if i > 1000:
+                print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
+                break
+
     indexToWd = {}
     with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "r", encoding="utf-8") as f:
         for line in f:
@@ -101,6 +105,14 @@ def read_particles(folderOut, nameOut, time=-1, get_clusters=False, only_pop_clu
                 if file_cluster not in dicFilesClus:
                     if (clus_index in selected_clus and only_pop_clus) or not only_pop_clus:
                         dicFilesClus[file_cluster] = read_clusters(file_cluster)
+
+                        if i==0:# and clus_index in [1,2]:
+                            pass
+                            print(clus_index, file_cluster, dicFilesClus[file_cluster].alpha_final)
+                        for clus2 in dicFilesClus[file_cluster].alpha_final:
+                            if ((clus_index==2 and clus2==3) or (clus_index==3 and clus2==3)) and i==0:
+                                pass
+                                #print("==", clus_index, clus2, file_cluster, dicFilesClus[file_cluster].alpha_final[clus2])
 
         for i in range(len(DHP.particles)):
             lg = len(DHP.particles[i].files_clusters)
@@ -156,6 +168,9 @@ def plot_kernel(c, DHP, consClus):
     weigths = np.zeros((len(consClus), len(means)))
     div = np.zeros((len(consClus)))
     indToClus = {int(c): i for i,c in enumerate(consClus)}
+    if len(active_timestamps)==0:
+        return
+
     for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:1000, 1]):  # ================================== :1000
         active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
         active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
@@ -202,6 +217,8 @@ def plot_real_timeline(c, DHP, consClus, datebeg="01/08/21"):
     indToClus = {int(c): i for i,c in enumerate(consClus)}
     times_cons = []
     dt = 15  # 1 obs every 15 minute
+    if len(active_timestamps)==0:
+        return
     for ind, x_i in enumerate(active_timestamps[active_timestamps[:, 0]==c][:, 1]):
         if len(times_cons) == 0:
             times_cons.append(x_i)
@@ -1210,11 +1227,14 @@ if __name__=="__main__":
             means = np.array(means)
             sigs = np.array(sigs)
 
-            alpha0 = 1.  # Uniform beta or Dirichlet prior
+            alpha0 = 0.1  # Uniform beta or Dirichlet prior
 
-            arrR = [1., 0.5, 0., 1.5]
+            arrR = [1.]#, 0.5, 0., 1.5]
+            print("REMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVE")
             sample_num = 20000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
+            sample_num = 1000000  # Typically 5 active clusters, so 25*len(mean) parameters to infer using sample_num*len(mean) samples => ~sample_num/25 samples per float
             particle_num = 20
+            particle_num = 1
             multivariate = True
 
             folder = "data/Covid/"
@@ -1232,15 +1252,16 @@ if __name__=="__main__":
         for r in arrR:
             name_output = f"COVID-19-events_{lang}_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
                           f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
+            name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+                          f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
 
             DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
             for clus in DHP.particles[0].clusters:
                 for clus2 in DHP.particles[0].clusters[clus].alpha_final:
-                    if clus<=3 and clus2<=3:
+                    if (clus==0 and clus2==2) or (clus==1 and clus2==2):
                         print(clus, clus2, DHP.particles[0].clusters[clus].alpha_final[clus2])
-                print()
-            pause()
+            #pause()
 
             observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
             DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
@@ -1253,7 +1274,8 @@ if __name__=="__main__":
             consClus = list(set(list(DHP.particles[0].clusters.keys())))
             for i in reversed(range(len(consClus))):
                 if DHP.particles[0].docs2cluster_ID.count(consClus[i])<100:
-                    consClus.remove(consClus[i])
+                    pass
+                    #consClus.remove(consClus[i])
 
 
 
@@ -1262,10 +1284,6 @@ if __name__=="__main__":
                 if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
                     continue
 
-
-                for influencer_clus in consClus:
-                    print(list(DHP.particles[0].clusters[c].alpha_final[influencer_clus]))
-                    continue
 
                 fig = plt.figure(figsize=(1*scale, 3*scale))
 

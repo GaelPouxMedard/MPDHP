@@ -44,6 +44,7 @@ class Particle(object):
 		self.clusters = {}  # can be stored in the process for efficient memory implementation, key = cluster_index, value = cluster object
 		self.docs2cluster_ID = []  # the element is the cluster index of a sequence of document ordered by the index of document
 		self.active_clusters = {}  # dict key = cluster_index, value = list of timestamps in specific cluster (queue)
+		self.num_obs_cluster = {}
 		self.active_timestamps = None  # list of tuples (time, cluster)
 		self.cluster_num_by_now = 0
 		self.active_clus_to_ind = {}  # Links the order of active clusters to their position in cluster.alpha
@@ -306,6 +307,14 @@ def update_triggering_kernel_optim(particle, cluster):
 	#alpha = np.sum(update_weight.reshape(-1,1) * alphas, axis = 0)
 	#alpha = update_weight.dot(alphas.transpose(1,0,2))
 	alpha = np.tensordot(update_weight, alphas, axes=1)
+
+	# try:
+	# 	if cluster.index in [1,2]:
+	# 		pass
+	# 		print(np.max(logLikelihood), np.max(logLikelihood[logLikelihood!=np.max(logLikelihood)]))
+	# 		print(cluster.index, alpha[0], alphas[update_weight==np.max(update_weight), 0], np.max(update_weight), np.max(update_weight[update_weight!=np.max(update_weight)]))
+	# except Exception as e:
+	# 	pass
 
 
 	return alpha

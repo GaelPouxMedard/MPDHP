@@ -42,6 +42,11 @@ def readObservations(folder, name_ds, output_folder):
 
             tup = (i, timestamp, (uniquewords, cntwords), (clusTxt, clusTmp))
             observations.append(tup)
+
+            if i > 1000:
+                print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
+                break
+
     with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "w+", encoding="utf-8") as f:
         for wd in wdToIndex:
             f.write(f"{wdToIndex[wd]}\t{wd}\n")
@@ -632,8 +637,8 @@ elif RW=="2":
         timescale = sys.argv[3]
         theta0 = float(sys.argv[4])
     except:
-        timescale = "min"
-        theta0 = 0.01  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
+        timescale = "h"
+        theta0 = 0.1  # Has already been documented for RW in LDA like models, DHP, etc ~0.1, 0.01 ; here it's 10 to ease computing the overlap_voc
 
     if timescale=="min":
         lamb0_poisson /= 1
@@ -652,11 +657,12 @@ elif RW=="2":
     means = np.array(means)
     sigs = np.array(sigs)
 
-    alpha0 = 1.  # Uniform beta or Dirichlet prior
+    alpha0 = 0.5  # Beta or Dirichlet prior
 
     arrR = [1., 0.5, 0., 1.5]
-    sample_num = 10000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~50000 samples => sample_num/(5*len(mean))~2000 samples per float
-    particle_num = 10  # Like 10 simultaneous runs
+    print("REMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVE")
+    sample_num = 1000000  # Typically 5 active clusters, so 5*len(mean)~25 parameters to infer using sample_num*len(mean)~5000000 samples => sample_num/(5*len(mean))~200000 samples per float
+    particle_num = 10  # Like 10 simultaneous runs ==========================================
     multivariate_fit = True
     simple_DP = False
     printRes = True
