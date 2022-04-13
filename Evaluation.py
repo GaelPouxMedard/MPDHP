@@ -1,8 +1,11 @@
 import gzip
 import pickle
 import os
+import networkx as nx
 
 import numpy as np
+import seaborn
+
 from utils import *
 import sys
 import matplotlib.pyplot as plt
@@ -13,6 +16,10 @@ from wordcloud import WordCloud
 import multidict as multidict
 import re
 import datetime
+import matplotlib
+
+from matplotlib.patches import Arc, RegularPolygon
+from numpy import radians as rad
 
 
 def ensureFolder(folder):
@@ -22,14 +29,36 @@ def ensureFolder(folder):
             os.mkdir(curfol+fol)
         curfol += fol+"/"
 
+def normAxis(mat, axes):
+    idx = []
+    axes = tuple(axes)
+    for i in range(len(mat.shape)):
+        if i in axes or (i==len(mat.shape)-1 and -1 in axes):
+            idx.append(None)
+        else:
+            idx.append(slice(mat.shape[i]))
+    idx = tuple(idx)
+    newMat = (mat-np.min(mat, axis=axes)[idx])/(np.max(mat, axis=axes)[idx]-np.min(mat, axis=axes)[idx]+1e-20)
+    return newMat
+
 def nansem(x):
     x = np.array(x)
     return sem(x[~np.isnan(x)])
 
-def readObservations(folder, name_ds, output_folder):
+def readObservations(folder, name_ds, output_folder, onlyreturnindexwds=False):
     dataFile = folder+name_ds
     observations = []
     wdToIndex, index = {}, 0
+
+
+    indexToWd = {}
+    with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            index, wd = line.replace("\n", "").split("\t")
+            indexToWd[int(index)] = wd
+    if onlyreturnindexwds: return indexToWd
+
+    index = 0
     with open(dataFile, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             l = line.replace("\n", "").split("\t")
@@ -52,19 +81,13 @@ def readObservations(folder, name_ds, output_folder):
             tup = (i, timestamp, [uniquewords, cntwords], [clusTxt, clusTmp])
             observations.append(tup)
 
-            if 'Covid' in dataFile and i>10000 and True:  # ============================================
-                print("BROKEN ===")
-                break
-
-            if i > 1000:
+            if 'Covid' in dataFile and i>10000 and False:  # ============================================
                 print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
                 break
 
-    indexToWd = {}
-    with open(output_folder+name_ds.replace("_events.txt", "")+"_indexWords.txt", "r", encoding="utf-8") as f:
-        for line in f:
-            index, wd = line.replace("\n", "").split("\t")
-            indexToWd[int(index)] = wd
+            if i > 5000 and False:
+                print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")  # ============================================
+                break
 
     V = len(indexToWd)
     observations = np.array(observations, dtype=object)
@@ -85,41 +108,32 @@ def getData(params):
 
     return name_ds, observations, vocabulary_size
 
-def read_particles(folderOut, nameOut, time=-1, get_clusters=False, only_pop_clus=False):
+def read_particles(folderOut, nameOut, time=-1):
     if time==-1: txtTime = "_final"
     else: txtTime = f"_obs={int(time)}"
 
     with gzip.open(folderOut+nameOut+txtTime+"_particles.pkl.gz", "rb") as f:
         DHP = pickle.load(f)
 
-    popClus, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
-    selected_clus = [clus for _, clus in sorted(zip(cnt, popClus), reverse=True)][:20]
-    print(sorted(cnt, reverse=True)[:50])
-    #pause()
+    # popClus, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
+    # selected_clus = [clus for _, clus in sorted(zip(cnt, popClus), reverse=True)][:20]
+    # print(sorted(cnt, reverse=True)[:50])
 
-    if get_clusters:
-        dicFilesClus = {}
-        for i in range(len(DHP.particles)):
-            lg = len(DHP.particles[i].files_clusters)
-            for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
-                if file_cluster not in dicFilesClus:
-                    if (clus_index in selected_clus and only_pop_clus) or not only_pop_clus:
-                        dicFilesClus[file_cluster] = read_clusters(file_cluster)
+    return DHP
 
-                        if i==0:# and clus_index in [1,2]:
-                            pass
-                            print(clus_index, file_cluster, dicFilesClus[file_cluster].alpha_final)
-                        for clus2 in dicFilesClus[file_cluster].alpha_final:
-                            if ((clus_index==2 and clus2==3) or (clus_index==3 and clus2==3)) and i==0:
-                                pass
-                                #print("==", clus_index, clus2, file_cluster, dicFilesClus[file_cluster].alpha_final[clus2])
+def fill_clusters(DHP, consClus):
+    dicFilesClus = {}
+    for i in range(len(DHP.particles)):
+        for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
+            if file_cluster not in dicFilesClus:
+                if clus_index in consClus:
+                    dicFilesClus[file_cluster] = read_clusters(file_cluster)
 
-        for i in range(len(DHP.particles)):
-            lg = len(DHP.particles[i].files_clusters)
-            for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
-                if (clus_index in selected_clus and only_pop_clus) or not only_pop_clus:
-                    clus = dicFilesClus[file_cluster]
-                    DHP.particles[i].clusters[clus_index] = clus
+    for i in range(len(DHP.particles)):
+        for clus_num, (clus_index, file_cluster) in enumerate(DHP.particles[i].files_clusters):
+            if clus_index in consClus:
+                clus = dicFilesClus[file_cluster]
+                DHP.particles[i].clusters[clus_index] = clus
 
     return DHP
 
@@ -146,13 +160,13 @@ def getFrequencyDictForText(words):
         fullTermsDict.add(key, tmpDict[key])
     return fullTermsDict
 
-def makeWordCloud(dictWordsFreq, onlyreturnImg=False):
+def makeWordCloud(dictWordsFreq, onlyreturnImg=False, colormap="twilight", nbWds = 200):
     #alice_mask = np.array(Image.open("alice_mask.png"))
 
     x, y = np.ogrid[:1000, :1000]
-    mask = (x - 500) ** 2 + (y - 500) ** 2 > 500 ** 2
+    mask = (x - 500) ** 2 + (y - 500) ** 2 > 450 ** 2
     mask = 255 * mask.astype(int)
-    wc = WordCloud(background_color="white", max_words=500, mask=mask, colormap="twilight")  #"cividis")
+    wc = WordCloud(background_color='white', max_words=nbWds, mask=mask, contour_width=10, contour_color='black', colormap=colormap)  #"cividis")
     # generate word cloud
     wc.generate_from_frequencies(dictWordsFreq)
 
@@ -164,51 +178,110 @@ def makeWordCloud(dictWordsFreq, onlyreturnImg=False):
     plt.tight_layout()
     plt.axis("off")
 
+def drawCirc(ax,radius,centX,centY,angle_,theta2_,width, widtharrow, alpha=1.,color_='black',zorder=0):
+    #========Line
+    arc = Arc((centX,centY),radius,radius,angle=angle_,lw=width,
+              theta1=0,theta2=theta2_,capstyle='round',linestyle='-',color=color_, alpha=alpha,zorder=zorder)
+    ax.add_patch(arc)
+
+
+    #========Create the arrow head
+    endX=centX+(radius/2)*np.cos(rad(theta2_+angle_)) #Do trig to determine end position
+    endY=centY+(radius/2)*np.sin(rad(theta2_+angle_))
+
+    ax.add_patch(                    #Create triangle as arrow head
+        RegularPolygon(
+            (endX, endY),            # (x,y)
+            3,                       # number of vertices
+            widtharrow,                # radius
+            rad(angle_+theta2_),     # orientation
+            color=color_,
+            alpha=alpha,
+            zorder=zorder
+        )
+    )
+    #ax.set_xlim([centX-radius,centY+radius]) and ax.set_ylim([centY-radius,centY+radius])
+    # Make sure you keep the axes scaled or else arrow will distort
+
+# Precompute matrices
+def plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, consClus):
+    clusToInd = {int(c): i for i,c in enumerate(consClus)}
+    with open(results_folder+name_output+"_clusToInd.pkl", 'wb') as f:
+        pickle.dump(clusToInd, f)
+
+    A = np.zeros((len(consClus), len(consClus), len(means)))
+    transparency = np.zeros((len(consClus), len(consClus), len(means)))
+    transparency_permonth = np.zeros((12, len(consClus), len(consClus), len(means)))
+    for indexclus, c in enumerate(consClus):
+        #print("Compute adjacency/weigths matrix", indexclus, "/", len(consClus))
+
+
+        active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
+        active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+        weigths = np.zeros((len(consClus), len(means)))
+        div = 0
+        weigths_permonth = np.zeros((12, len(consClus), len(means)))
+        div_permonth = np.zeros((12))
+
+        for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:, 1]):
+            active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
+            active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
+            timeseq = active_timestamps_cons[:, 1]
+            clusseq = active_timestamps_cons[:, 0]
+            month = datetime.datetime.fromtimestamp(t*60).month-1  # Bc month=index, begins at 0
+            div += 1  # Intensité subie par observation
+            div_permonth[month] += 1
+            if len(timeseq)<=0: continue
+            time_intervals = timeseq[-1] - timeseq[:-1]
+            if len(time_intervals)!=0:
+                RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
+                for (clus, trig) in zip(clusseq, RBF):
+                    clus = int(clus)
+                    if clus not in DHP.particles[0].clusters[c].alpha_final:
+                        continue
+                    indclus = clusToInd[clus]
+
+                    weigths[indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]
+                    weigths_permonth[month, indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]
+
+
+        weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
+        weigths_permonth /= (div_permonth[:, None, None]+1e-20)  # Only Siths deal in absolutes (again)
+
+        for c2 in DHP.particles[0].clusters[c].alpha_final:
+            if c2 not in consClus: continue
+
+            for l in range(len(means)):
+                A[clusToInd[c],clusToInd[c2], l] = DHP.particles[0].clusters[c].alpha_final[c2][l]
+                transparency[clusToInd[c],clusToInd[c2], l] = weigths[clusToInd[int(c2)], l]
+
+                for month in range(len(transparency_permonth)):
+                    transparency_permonth[month, clusToInd[c],clusToInd[c2], l] = weigths_permonth[month, clusToInd[int(c2)], l]
+
+    np.save(results_folder+name_output+"_adjacency", A)
+    np.save(results_folder+name_output+"_transparency", transparency)
+    np.save(results_folder+name_output+"_transparency_permonth", transparency_permonth)
+
+
+
 # Kernel
-def plot_kernel(c, DHP, observations, consClus):
-    active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
-    active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
-    weigths = np.zeros((len(consClus), len(means)))
-    div = np.zeros((len(consClus)))
-    indToClus = {int(c): i for i,c in enumerate(consClus)}
-    if len(active_timestamps)==0:
-        return
+def plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd):
+    A, transparency = A.copy(), transparency.copy()
 
-    for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:1000, 1]):  # ================================== :1000
-        active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
-        active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
-        timeseq = active_timestamps_cons[:, 1]
-        clusseq = active_timestamps_cons[:, 0]
-        if len(timeseq)<=0: continue
-        time_intervals = timeseq[-1] - timeseq[:-1]
-        if len(time_intervals)!=0:
-            RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
-            for (clus, trig) in zip(clusseq, RBF):
-                if clus not in DHP.particles[0].clusters[c].alpha_final:
-                    continue
-                indclus = indToClus[int(clus)]
-                #print(weigths.shape, trig.shape, DHP.particles[0].clusters[c].alpha_final[clus].shape)
-                weigths[indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]  # [0] bc on multiplie déjà
-                div[indclus] += 1  # Because if perfect correlation, lambda_max=cst bc bounded by 1, due to rescaling a constant value is enough here.
-
-    weigths = weigths.sum(axis=-1)  # Sum over RBF kernel
-    weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
-    #weigths *= 100  # Rescale absolute (to compare the different figures)
-    weigths/=(np.max(weigths)+1e-20)  # Rescale for each column of RBF kernel (also only Siths deal in absolutes)
+    transparency = transparency.sum(axis=-1)
+    transparency = normAxis(transparency, axes=[1])
 
     dt = np.linspace(0, np.max(means)+np.max(sigs), 1000)
     trigger = RBF_kernel(means, dt, sigs)
     for index, influencer_clus in enumerate(consClus):
         if influencer_clus not in DHP.particles[0].clusters[c].alpha_final:
             continue
-        trigger_clus = trigger.dot(DHP.particles[0].clusters[c].alpha_final[influencer_clus])
-        if influencer_clus<=5:
-            print(influencer_clus, list(DHP.particles[0].clusters[c].alpha_final[influencer_clus]))
+        trigger_clus = trigger.dot(A[clusToInd[c],clusToInd[influencer_clus]])
 
-        alpha = weigths[indToClus[influencer_clus]]
-        if alpha<5e-3: continue
+        transp = np.sum(transparency[clusToInd[c], clusToInd[influencer_clus]])
+        if transp<5e-3: continue
 
-        plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=alpha, c=f"C{index}")
+        plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=transp, c=f"C{index}")
     leg = plt.legend()
     for lh in leg.legendHandles:
         lh.set_alpha(1)
@@ -269,8 +342,8 @@ def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
         return
 
     limleft = datetime.datetime.timestamp(datetime.datetime.strptime(datebeg, '%d/%m/%y'))/60  # In minutes
-    limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])*60))
-    plt.xlim(left=limleft)
+    limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])))/60
+    plt.xlim(left=limleft, right=limright)
 
     dt = 24*60  # day
     x_ticks = [limleft]
@@ -280,13 +353,7 @@ def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
     plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
 
 # Plot each cluster
-def plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=100):
-    consClus = list(set(list(DHP.particles[0].clusters.keys())))
-    for i in reversed(range(len(consClus))):
-        if DHP.particles[0].docs2cluster_ID.count(consClus[i])<thresSize:
-            pass
-            consClus.remove(consClus[i])
-
+def plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd):
     scale = 4
     for c in sorted(DHP.particles[0].clusters, reverse=False):
         if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
@@ -297,17 +364,17 @@ def plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSi
 
         fig = plt.figure(figsize=(1*scale, 3*scale))
 
-        print(f"Cluster {c}a")
+        #print(f"Cluster {c}a")
         plt.subplot(3,1,1)
         plt.title(f"Cluster {c} - {DHP.particles[0].docs2cluster_ID.count(c)} obs")
         wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
         makeWordCloud(wds)
 
-        print(f"Cluster {c}b")
+        #print(f"Cluster {c}b")
         plt.subplot(3,1,2)
-        plot_kernel(c, DHP, observations, consClus)
+        plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd)
 
-        print(f"Cluster {c}c")
+        #print(f"Cluster {c}c")
         plt.subplot(3, 1, 3)
         plot_real_timeline(c, DHP, observations, consClus, datebeg="01/01/19")
 
@@ -318,64 +385,275 @@ def plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSi
 
 
 # Plot... Graphe topics, bah oui
-def plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=100):
-    consClus = list(set(list(DHP.particles[0].clusters.keys())))
-    for i in reversed(range(len(consClus))):
-        if DHP.particles[0].docs2cluster_ID.count(consClus[i])<thresSize:
-            pass
-            consClus.remove(consClus[i])
+def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, consClus, clusToInd, ax_ext=None, ax_clus=None, colorClus = None, axesNorm=None):
+    if colorClus is None:
+        colorClus = {int(c): f"C{i}" for i,c in enumerate(consClus)}
 
-    clusToInd = {int(c): i for i,c in enumerate(consClus)}
+    A, transparency = A.copy(), transparency.copy()
 
-    A = np.zeros((len(consClus), len(consClus)))
-    for c in DHP.particles[0].clusters:
+    if axesNorm is None:
+        axesNorm = [2]
+    transparency = normAxis(transparency, axes=axesNorm)
+    A = normAxis(A, axes=axesNorm)
+
+    cmap = matplotlib.cm.get_cmap('afmhot_r')
+    scale = len(means)*5
+    scaleedge = 0.01
+
+    if ax_ext is None:
+        fig, ax = plt.subplots(1,len(means), figsize=(len(means)*scale, 1*scale), subplot_kw=dict(box_aspect=1))
+        num = len(consClus)
+        nbx = int(num**0.5)+1
+        nby = nbx
+        fig_clus, ax_clus = plt.subplots(nbx, nby, figsize=(scale*nbx, scale*nby))
+        ax_clus = ax_clus.flat
+    else:
+        ax = ax_ext
+
+    G = nx.from_numpy_array(A.sum(axis=-1))
+    pos = nx.spring_layout(G, k=4)
+    for l in range(len(means)):
+        radius = 0.2
+        minx = np.min([pos[index][0] for index in pos])-radius
+        maxx = np.max([pos[index][0] for index in pos])+radius
+        miny = np.min([pos[index][1] for index in pos])-radius
+        maxy = np.max([pos[index][1] for index in pos])+radius
+        for c in consClus:
+            #print("Kernel", l, "- C -", clusToInd[c], "/", len(consClus))
+
+            xnode, ynode = pos[clusToInd[c]]
+            ax[l].plot([xnode], [ynode], "o", markersize = radius*1000, c=colorClus[c])
+
+            if not bool(ax_clus[clusToInd[c]].get_images()):
+                wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+                imgWC = makeWordCloud(wds, onlyreturnImg=True, colormap="cividis")
+                imgWC=imgWC.to_array()
+
+                alpha = ~np.all(imgWC == 255, axis=2) * 255
+                rgbaimgWC = np.dstack((imgWC, alpha)).astype(np.uint8)
+
+                bbox = [radius, 2*radius, -radius/2, radius/2]
+                ax_clus[clusToInd[c]].imshow(rgbaimgWC, interpolation="nearest", extent=bbox, zorder=1)
+                ax_clus[clusToInd[c]].plot(radius/2, 0, "o", markersize=radius*1500, color=colorClus[c])
+                ax_clus[clusToInd[c]].text(radius*8/10, 0, "=", fontsize=200, ha="center", va="center")
+                ax_clus[clusToInd[c]].set_xlim([0, 2*radius])
+                ax_clus[clusToInd[c]].set_ylim([-radius/2, radius/2])
+                ax_clus[clusToInd[c]].set_xticks([])
+                ax_clus[clusToInd[c]].set_yticks([])
+
+            for c2 in consClus:
+                transp = transparency[clusToInd[c], clusToInd[c2], l]
+                color = cmap(A[clusToInd[c], clusToInd[c2], l])
+
+                if c==c2:
+                    costheta = np.cos(45)
+                    sintheta = np.sin(45)
+                    if c>c2:
+                        shift=0.01
+                    else:
+                        shift=-0.01
+                    shiftx = shift*np.cos(np.arccos(costheta)+np.pi/2)
+                    shifty = shift*np.sin(np.arcsin(sintheta)+np.pi/2)
+                    x = xnode+radius*costheta+shiftx
+                    y = ynode+radius*sintheta+shifty
+
+                    w = 1000*scaleedge
+                    drawCirc(ax[l],0.15,x,y,-60,215,width=w,widtharrow=1.5*w/500, color_=color, alpha=transp, zorder=10)
+
+                if c!=c2:
+                    xnode2, ynode2 = pos[clusToInd[c2]]
+                    dx = xnode2-xnode
+                    dy = ynode2-ynode
+                    theta = np.arctan2(dy, dx)
+                    costheta = np.cos(theta)
+                    sintheta = np.sin(theta)
+
+                    if theta>np.pi:
+                        coeff=1
+                    else:
+                        coeff=-1
+                    shift=0.05
+
+                    shiftx = shift*np.cos(np.pi/2-coeff*theta)
+                    shifty = shift*np.sin(np.pi/2-coeff*theta)
+
+                    x = xnode+radius*costheta+shiftx
+                    dx -= 2*radius*costheta
+                    y = ynode+radius*sintheta+shifty
+                    dy -= 2*radius*sintheta
+
+                    ax[l].arrow(x, y, dx, dy, width=1.*scaleedge, zorder=10, length_includes_head=True, color=color, alpha=transp)
+
+
+        ax[l].set_xlim([minx, maxx])
+        ax[l].set_ylim([miny, maxy])
+        ax[l].set_xticks([])
+        ax[l].set_yticks([])
+
+    #plt.tight_layout()
+    if ax_ext is None:
+        plt.figure(fig.number)
+        plt.savefig(results_folder+name_output+"_Recap.pdf")
+        plt.close(fig)
+        plt.figure(fig_clus.number)
+        plt.savefig(results_folder+name_output+"_Recap_clus.jpg")
+        plt.close(fig_clus)
+
+def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth, results_folder, name_output, DHP, indexToWd, consClus, clusToInd, axesNorm=None, numClusPerMonth=5):
+    popClus_month = {}
+    for c, o in zip(DHP.particles[0].docs2cluster_ID, observations):
         if c not in consClus: continue
+        t = o[1]
+        month = datetime.datetime.fromtimestamp(t*60).month
+        if month not in popClus_month: popClus_month[month] = {}
+        if c not in popClus_month[month]: popClus_month[month][c] = 0
 
-        wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
-        imgWC = makeWordCloud(wds)
+        popClus_month[month][c] += 1
+
+    scale = len(means)*5
+    fig, ax = plt.subplots(len(popClus_month), len(means), figsize=(len(means)*scale, len(popClus_month)*scale), subplot_kw=dict(box_aspect=1))
+
+    allConsClus = set()
+    for month in sorted(popClus_month):
+        entries_to_cons = list(sorted(popClus_month[month].items(), key=lambda x: x[1], reverse=True)[:numClusPerMonth])  # Select top 5 clusters
+        for clus, cnt in entries_to_cons:
+            allConsClus.add(clus)
+
+    num = len(allConsClus)
+    nbx = int(num**0.5)+1
+    nby = nbx
+    fig_clus, ax_clus = plt.subplots(nbx, nby, figsize=(scale*nbx, scale*nby))
+    ax_clus = ax_clus.flat
+
+    if len(popClus_month)==1: ax=np.array([ax])
+    indexes_month = list(sorted(popClus_month))
+    for month in sorted(popClus_month):
+        entries_to_cons = list(sorted(popClus_month[month].items(), key=lambda x: x[1], reverse=True)[:numClusPerMonth])  # Select top 5 clusters
+        consClus_month = []
+        for clus, cnt in entries_to_cons:
+            consClus_month.append(clus)
+
+        consClus_month_index = [clusToInd[clusmonth] for clusmonth in consClus_month]
+        clusToInd_month = {clusmonth: i for i, clusmonth in enumerate(consClus_month)}
+        plotGraphGlob(A[consClus_month_index][:, consClus_month_index], transparency_permonth[month-1][consClus_month_index][:, consClus_month_index], results_folder, name_output, DHP, indexToWd, consClus_month, clusToInd_month, ax_ext=ax[month-1], ax_clus=ax_clus, axesNorm=axesNorm)
+
+    monthIndex = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    for i in range(len(ax)):
+        for j in range(len(ax[i])):
+            ax[i,j].set_ylabel(monthIndex[indexes_month[i]-1], fontsize=4*scale)
+            ax[i,j].set_xlabel(f"Influence at {means[j]}min", fontsize=4*scale)
+
+    for a in ax.flat:
+        a.label_outer()
+
+    plt.figure(fig.number)
+    plt.savefig(results_folder+name_output+"_Recap_months.pdf")
+    plt.close(fig)
+    plt.figure(fig_clus.number)
+    fig_clus.savefig(results_folder+name_output+"_Recap_months_clus.jpg")
+    plt.close(fig_clus)
 
 
-        active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
-        active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
+# Plot... Timeline!
+def plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=5):
+    res = 12*30/3
+    res = int(res)
 
-        weigths = np.zeros((len(consClus), len(means)))
-        div = np.zeros((len(consClus)))
-        for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:1000, 1]):  # ================================== :1000
-            active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
-            active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
-            timeseq = active_timestamps_cons[:, 1]
-            clusseq = active_timestamps_cons[:, 0]
-            if len(timeseq)<=0: continue
-            time_intervals = timeseq[-1] - timeseq[:-1]
-            if len(time_intervals)!=0:
-                RBF = RBF_kernel(means, time_intervals, sigs)  # num_time_points, size_kernel
-                for (clus, trig) in zip(clusseq, RBF):
-                    if clus not in DHP.particles[0].clusters[c].alpha_final:
-                        continue
-                    indclus = clusToInd[int(clus)]
-                    #print(weigths.shape, trig.shape, DHP.particles[0].clusters[c].alpha_final[clus].shape)
-                    weigths[indclus] += trig*DHP.particles[0].clusters[c].alpha_final[clus]  # [0] bc on multiplie déjà
-                    div[indclus] += 1  # Because if perfect correlation, lambda_max=cst bc bounded by 1, due to rescaling a constant value is enough here.
+    popClus_month = {}
+    for c, o in zip(DHP.particles[0].docs2cluster_ID, observations):
+        if c not in consClus: continue
+        t = o[1]
+        month = datetime.datetime.fromtimestamp(t*60).month
+        if month not in popClus_month: popClus_month[month] = {}
+        if c not in popClus_month[month]: popClus_month[month][c] = 0
 
-        weigths = weigths.sum(axis=-1)  # Sum over RBF kernel
-        weigths /= (div+1e-20)  # Only Siths deal in absolutes (well maybe not)
-        #weigths *= 100  # Rescale absolute (to compare the different figures)
-        weigths/=(np.max(weigths)+1e-20)  # Rescale for each column of RBF kernel (also only Siths deal in absolutes)
+        popClus_month[month][c] += 1
 
-        print(weigths)
+    allConsClus = set()
+    for month in sorted(popClus_month):
+        entries_to_cons = list(sorted(popClus_month[month].items(), key=lambda x: x[1], reverse=True)[:numClusPerMonth])  # Select top 5 clusters
+        for clus, cnt in entries_to_cons:
+            allConsClus.add(clus)
+    allConsClus = list(allConsClus)
+    allConsClus = list(sorted(allConsClus, key=lambda x: DHP.particles[0].docs2cluster_ID.count(x),reverse=True))
 
-        pause()
+    clusToInd_heatmap = {clus: i for i, clus in enumerate(allConsClus)}
 
-        for c2 in DHP.particles[0].clusters[c].alpha_final:
-            if c2 not in consClus: continue
+    matheatmap = np.zeros((len(allConsClus), res))
 
-            x = 0
+    tsclus = {}
+    for c, o in zip(DHP.particles[0].docs2cluster_ID, observations):
+        if c not in allConsClus: continue
+        if c not in tsclus: tsclus[c]=[]
+        tsclus[c].append(o[1])
+
+    minTime, maxTime = 1e20, -1e20
+    for c in tsclus:
+        if len(tsclus[c])==0:
+            tsclus[c] = np.array([])
+            continue
+        if np.min(tsclus[c])<minTime: minTime=np.min(tsclus[c])
+        if np.max(tsclus[c])>maxTime: maxTime=np.max(tsclus[c])
+    if minTime>maxTime:
+        minTime=-1
+        maxTime=1
+    bins = np.linspace(minTime, maxTime, res+1)
+    for c in sorted(tsclus):
+        n, _, _ = plt.hist(tsclus[c], bins=bins, density=False)
+        plt.close()
+        matheatmap[clusToInd_heatmap[c]] = n
+
+    topWords = ["" for _ in range(len(clusToInd_heatmap))]
+    for c in sorted(tsclus):
+        wds = [indexToWd[idx] for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0]
+        topWords[clusToInd_heatmap[c]] = ", ".join(wds[:5])
+
+    scale=2
+
+    for normornot in ["norm", "abs"]:
+        fig = plt.figure(figsize=(15*scale, 0.2*scale*len(allConsClus)))
+
+        if normornot=="norm":
+            matheatmap_used = matheatmap/np.max(matheatmap, axis=1)[:, None]
+        else:
+            matheatmap_used = matheatmap
+        seaborn.heatmap(matheatmap_used, cmap="afmhot_r", square=False, cbar=False)
 
 
-            A[clusToInd[c],clusToInd[c2]] = x
+        xticks = [i for i in range(len(bins)) if i%(res//10)==0]
+        xlabels = [datetime.datetime.fromtimestamp(bins[i]*60).strftime("%d %b") for i in xticks]
+
+        plt.yticks(np.array(list(range(len(tsclus))))+0.5, topWords, rotation=0, fontsize=11*scale)
+        plt.xticks(xticks, xlabels, rotation=45, fontsize=11*scale)
+
+        # radius = 0.5
+        # for i, c in enumerate(allConsClus):
+        #     print(i,c)
+        #     wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
+        #     wc = makeWordCloud(wds, onlyreturnImg=True, nbWds = 20)
+        #     wc = wc.to_array()
+        #     alpha = ~np.all(wc == 255, axis=2) * 255
+        #     rgbaimgWC = np.dstack((wc, alpha)).astype(np.uint8)
+        #     bbox = [-2*radius, 0, i-0.5-radius, i-0.5+radius]
+        #     plt.imshow(rgbaimgWC, interpolation="nearest", extent=bbox, zorder=1)
 
 
+        plt.tight_layout()
+        plt.savefig(results_folder+name_output+f"_Timeline_{normornot}.pdf")
+        #plt.show()
+        plt.close()
 
+
+def metrics(A, transparency, DHP, clusToInd):
+    effective_interaction = transparency.copy()
+    for c in clusToInd:
+        effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+    mean = np.sum((A-lamb0_poisson)*transparency, axis=(0,1))/np.sum((A-lamb0_poisson), axis=(0,1))
+    print(mean)
+    mean = np.sum((A-lamb0_poisson), axis=(0,1))/np.sum(transparency**0, axis=(0,1))
+    print(mean)
+    mean = np.sum(transparency, axis=(0,1))/np.sum(transparency**0, axis=(0,1))
+    print(mean)
 
 if __name__=="__main__":
     try:
@@ -389,8 +667,8 @@ if __name__=="__main__":
 
     if RW=="0":
         if True:
-            num_NMI_last = 5000000000  # ======================================================================================================
-            norm_err = 0.2  # ======================================================================================================
+            num_NMI_last = 5000000000  # Consider all observations
+            norm_err = 0.2  # For visual representation or error bars, not used
 
 
             nbClasses = 2
@@ -1306,57 +1584,94 @@ if __name__=="__main__":
         try:
             timescale = sys.argv[3]
             theta0 = float(sys.argv[4])
+            arrThetas = [0.01, 0.001, 0.1]
         except:
-            timescale = "min"
-            theta0 = 0.1
+            timescale = "d"
+            arrThetas = [0.01]
 
-        if True:
-            if timescale=="min":
-                lamb0_poisson /= 1
-                means = [10*(i) for i in range(9)]  # Until 90min
-                sigs = [5 for i in range(9)]
-            elif timescale=="h":
-                lamb0_poisson /= 10
-                means = [120*(i) for i in range(5)]  # Until 600min
-                sigs = [60 for i in range(5)]
-            elif timescale=="d":
-                lamb0_poisson /= 100
-                means = [60*24*(i) for i in range(7)]  # Until 86400min
-                sigs = [60*24/2 for i in range(7)]
+        arrR = [1.]#, 0.5, 0., 1.5]
+        for theta0 in arrThetas:
+            if True:
+                if timescale=="min":
+                    lamb0_poisson /= 1
+                    means = [10*(i) for i in range(9)]  # Until 90min
+                    sigs = [5 for i in range(9)]
+                elif timescale=="h":
+                    lamb0_poisson /= 10
+                    means = [120*(i) for i in range(5)]  # Until 600min
+                    sigs = [60 for i in range(5)]
+                elif timescale=="d":
+                    lamb0_poisson /= 100
+                    means = [60*24*(i) for i in range(7)]  # Until 86400min
+                    sigs = [60*24/2 for i in range(7)]
 
-            means = np.array(means)
-            sigs = np.array(sigs)
+                means = np.array(means)
+                sigs = np.array(sigs)
 
-            alpha0 = 0.5  # Uniform beta or Dirichlet prior
+                alpha0 = 0.5  # Uniform beta or Dirichlet prior
 
-            arrR = [1.]#, 0.5, 0., 1.5]
-            sample_num = 100000
-            particle_num = 8
-            multivariate = True
+                sample_num = 100000
+                particle_num = 8
+                multivariate = True
 
-            folder = "data/News/"
-            output_folder = "output/News/"
+                folder = "data/News/"
+                output_folder = "output/News/"
 
-            lang = XP
-            name_ds = f"allNews.txt"
-            results_folder = f"temp/MPDHP/results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
-            ensureFolder(results_folder+"Clusters/")
+                lang = XP
+                name_ds = f"allNews.txt"
+                results_folder = f"temp/MPDHP/results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
+                ensureFolder(results_folder+"Clusters/")
 
-        for r in arrR:
-            name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
-                          f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
-
-
-            observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-            DHP = read_particles(output_folder, name_output, get_clusters=True, only_pop_clus=True)
-
-            print()
-            print(f"-------- {r} ---------")
+            for r in arrR:
+                name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+                              f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
 
 
+                indexToWd = readObservations(folder, name_ds, output_folder, onlyreturnindexwds=True)
+                observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+                DHP = read_particles(output_folder, name_output)
+                observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
 
-            plotIndividualClusters(results_folder, DHP, indexToWd, observations, thresSize=1)
-            #plotGraphTopics(results_folder, DHP, indexToWd, observations, thresSize=1)
+                print(f"-------- r={r} - theta0={theta0}--------")
+
+                thresSizeLower = 100
+                thresSizeUpper = 10000  # "Trash" clusters /100.000 obs
+                numClusPerMonth = 5
+
+                un, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
+                print(list(sorted(cnt, reverse=True)))
+                un = un[cnt>thresSizeLower]
+                cnt = cnt[cnt>thresSizeLower]
+                un = un[cnt<thresSizeUpper]
+                cnt = cnt[cnt<thresSizeUpper]
+                consClus = [u for _, u in sorted(zip(cnt, un), reverse=True)]
+                print(consClus)
+
+                DHP = fill_clusters(DHP, consClus)
+
+                print("Computing A and weigths")
+                #plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, consClus)
+
+                A = np.load(results_folder+name_output+"_adjacency.npy")
+                transparency = np.load(results_folder+name_output+"_transparency.npy")
+                transparency_permonth = np.load(results_folder+name_output+"_transparency_permonth.npy")
+                with open(results_folder+name_output+"_clusToInd.pkl", 'rb') as f:
+                    clusToInd = pickle.load(f)
+
+                # print("Computing metrics")
+                # metrics(A, transparency, DHP, clusToInd)
+                # pause()
+
+                print("Computing timeline")
+                plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=10)
+                for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
+                    print(f"Computing graphs ({name_norm})")
+                    plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
+                                            results_folder, name_output+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                    plotGraphGlob(A, transparency, results_folder, name_output+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
+                    pass
+                print("Computing individual clusters")
+                plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd)
 
 
 
