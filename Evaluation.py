@@ -279,7 +279,7 @@ def plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd):
         trigger_clus = trigger.dot(A[clusToInd[c],clusToInd[influencer_clus]])
 
         transp = np.sum(transparency[clusToInd[c], clusToInd[influencer_clus]])
-        if transp<5e-3: continue
+        if transp<0.2: continue
 
         plt.plot(dt, trigger_clus, "-", label=f"Cluster {influencer_clus}", alpha=transp, c=f"C{index}")
     leg = plt.legend()
@@ -342,7 +342,7 @@ def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
         return
 
     limleft = datetime.datetime.timestamp(datetime.datetime.strptime(datebeg, '%d/%m/%y'))/60  # In minutes
-    limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])))/60
+    limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])))
     plt.xlim(left=limleft, right=limright)
 
     dt = 24*60  # day
@@ -380,7 +380,7 @@ def plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, obse
 
         fig.tight_layout()
         plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
-        #plt.show()
+        plt.show()
         plt.close()
 
 
@@ -1650,7 +1650,7 @@ if __name__=="__main__":
                 DHP = fill_clusters(DHP, consClus)
 
                 print("Computing A and weigths")
-                plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, consClus)
+                # plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, consClus)
 
                 A = np.load(results_folder+name_output+"_adjacency.npy")
                 transparency = np.load(results_folder+name_output+"_transparency.npy")
@@ -1662,15 +1662,15 @@ if __name__=="__main__":
                 # metrics(A, transparency, DHP, clusToInd)
                 # pause()
 
-                print("Computing timeline")
-                plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=10)
-                for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
-                    print(f"Computing graphs ({name_norm})")
-                    plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
-                                            results_folder, name_output+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
-                    plotGraphGlob(A, transparency, results_folder, name_output+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
-                    pass
-                print("Computing individual clusters")
+                # print("Computing timeline")
+                # plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=10)
+                # for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
+                #     print(f"Computing graphs ({name_norm})")
+                #     plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
+                #                             results_folder, name_output+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                #     plotGraphGlob(A, transparency, results_folder, name_output+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
+                #     pass
+                # print("Computing individual clusters")
                 plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd)
 
 
