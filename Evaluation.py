@@ -1619,7 +1619,7 @@ if __name__=="__main__":
 
                 lang = XP
                 name_ds = f"allNews.txt"
-                results_folder = f"MPDHP/results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
+                results_folder = f"results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
                 ensureFolder(results_folder+"Clusters/")
 
             for r in arrR:
