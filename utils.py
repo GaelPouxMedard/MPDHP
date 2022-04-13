@@ -56,11 +56,13 @@ class Particle(object):
 		return 'particle document list to cluster IDs: ' + str(self.docs2cluster_ID) + '\n' + 'weight: ' + str(self.weight)
 		
 # Dirichlet = get rid of spectral radius bias
-def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="dirichlet", return_priors=False, multivariate=True, index_cluster=None):
+def draw_vectors(alpha0, num_samples, active_clusters, size_kernel, method="beta", return_priors=False, multivariate=True, index_cluster=None):
 	vec = None
 	prior = None
 	if alpha0==1.:
 		vec = np.random.random((num_samples, len(active_clusters), size_kernel))
+		if method!="beta":
+			vec=vec/vec.sum(axis=-1)[..., None]
 	elif method=="dirichlet":
 		vec = dirichlet(alpha0, num_samples, active_clusters, size_kernel)
 	elif method=="beta":

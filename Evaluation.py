@@ -270,6 +270,7 @@ def plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd):
 
     transparency = transparency.sum(axis=-1)
     transparency = normAxis(transparency, axes=[1])
+    transparency = transparency**3
 
     dt = np.linspace(0, np.max(means)+np.max(sigs), 1000)
     trigger = RBF_kernel(means, dt, sigs)
@@ -287,7 +288,14 @@ def plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd):
         lh.set_alpha(1)
 
 # Real timeline
-def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
+def plot_real_timeline(c, DHP, observations, consClus, transparency, clusToInd, datebeg="01/08/21"):
+
+    transparency = transparency.copy()
+
+    transparency = transparency.sum(axis=-1)
+    transparency = normAxis(transparency, axes=[1])
+    transparency = transparency**3
+
     active_timestamps = np.array(list(zip(DHP.particles[0].docs2cluster_ID, observations[:, 1])))
     active_timestamps = np.array([ats for ats in active_timestamps if ats[0] in consClus])
     indToClus = {int(c): i for i,c in enumerate(consClus)}
@@ -335,7 +343,7 @@ def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
     plotted = False
     for influencer_clus in consClus:
         if len(array_intensity)>0:
-            plt.plot(array_times, array_intensity[:, indToClus[influencer_clus]], "-", label=f"Cluster {influencer_clus}")
+            plt.plot(array_times, array_intensity[:, indToClus[influencer_clus]], "-", label=f"Cluster {influencer_clus}", alpha=transparency[indToClus[c], indToClus[influencer_clus]])
             plotted = True
     #plt.legend()
     if not plotted:
@@ -345,11 +353,11 @@ def plot_real_timeline(c, DHP, observations, consClus, datebeg="01/08/21"):
     limright = datetime.datetime.timestamp(datetime.datetime.fromtimestamp(np.max(active_timestamps[:, 1])))
     plt.xlim(left=limleft, right=limright)
 
-    dt = 24*60  # day
+    dt = 30.5*24*60  # day
     x_ticks = [limleft]
     while x_ticks[-1]<np.max(array_times):
         x_ticks.append(x_ticks[-1]+dt)
-    x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d/%m/%y") for ts in x_ticks]
+    x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d %b") for ts in x_ticks]
     plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
 
 # Plot each cluster
@@ -376,11 +384,11 @@ def plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, obse
 
         #print(f"Cluster {c}c")
         plt.subplot(3, 1, 3)
-        plot_real_timeline(c, DHP, observations, consClus, datebeg="01/01/19")
+        plot_real_timeline(c, DHP, observations, consClus, transparency, clusToInd, datebeg="01/01/19")
 
         fig.tight_layout()
         plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
-        plt.show()
+        #plt.show()
         plt.close()
 
 

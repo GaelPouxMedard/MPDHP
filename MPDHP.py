@@ -252,6 +252,12 @@ class Dirichlet_Hawkes_Process(object):
 		for clus in particle.active_clusters:
 			particle.clusters[selected_cluster_index].alpha_final[clus] = alpha[particle.active_clus_to_ind[clus]].copy()
 
+		try:
+			pass
+			#print("Diff", np.sum(np.abs(particle.clusters[1].alpha_final[1]-particle.clusters[2].alpha_final[1])), list(particle.clusters[1].alpha_final[1]), list(particle.clusters[2].alpha_final[1]))
+		except:
+			pass
+
 		return alpha
 
 	def update_active_clusters(self, particle):
