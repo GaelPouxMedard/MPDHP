@@ -1592,7 +1592,7 @@ if __name__=="__main__":
         try:
             timescale = sys.argv[3]
             theta0 = float(sys.argv[4])
-            arrThetas = [0.01, 0.001, 0.1]
+            arrThetas = [0.01, 0.001]
         except:
             timescale = "d"
             arrThetas = [0.01]
@@ -1642,44 +1642,47 @@ if __name__=="__main__":
 
                 print(f"-------- r={r} - theta0={theta0}--------")
 
+                namethres = ""
                 thresSizeLower = 100
                 thresSizeUpper = 10000  # "Trash" clusters /100.000 obs
-                numClusPerMonth = 5
+                for (namethres, thresSizeLower, thresSizeUpper) in [("_mediumclus", 100, 10000), ("_bigclus", 500, 100000)]:
+                    name_output_res = name_output+namethres
+                    numClusPerMonth = 5
 
-                un, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
-                print(list(sorted(cnt, reverse=True)))
-                un = un[cnt>thresSizeLower]
-                cnt = cnt[cnt>thresSizeLower]
-                un = un[cnt<thresSizeUpper]
-                cnt = cnt[cnt<thresSizeUpper]
-                consClus = [u for _, u in sorted(zip(cnt, un), reverse=True)]
-                print(consClus)
+                    un, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
+                    print(list(sorted(cnt, reverse=True)))
+                    un = un[cnt>thresSizeLower]
+                    cnt = cnt[cnt>thresSizeLower]
+                    un = un[cnt<thresSizeUpper]
+                    cnt = cnt[cnt<thresSizeUpper]
+                    consClus = [u for _, u in sorted(zip(cnt, un), reverse=True)]
+                    print(consClus)
 
-                DHP = fill_clusters(DHP, consClus)
+                    DHP = fill_clusters(DHP, consClus)
 
-                print("Computing A and weigths")
-                # plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, consClus)
+                    print("Computing A and weigths")
+                    plotAdjTrans(results_folder, name_output_res, DHP, indexToWd, observations, consClus)
 
-                A = np.load(results_folder+name_output+"_adjacency.npy")
-                transparency = np.load(results_folder+name_output+"_transparency.npy")
-                transparency_permonth = np.load(results_folder+name_output+"_transparency_permonth.npy")
-                with open(results_folder+name_output+"_clusToInd.pkl", 'rb') as f:
-                    clusToInd = pickle.load(f)
+                    A = np.load(results_folder+name_output_res+"_adjacency.npy")
+                    transparency = np.load(results_folder+name_output_res+"_transparency.npy")
+                    transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
+                    with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
+                        clusToInd = pickle.load(f)
 
-                # print("Computing metrics")
-                # metrics(A, transparency, DHP, clusToInd)
-                # pause()
+                    # print("Computing metrics")
+                    # metrics(A, transparency, DHP, clusToInd)
+                    # pause()
 
-                # print("Computing timeline")
-                # plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=10)
-                # for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
-                #     print(f"Computing graphs ({name_norm})")
-                #     plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
-                #                             results_folder, name_output+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
-                #     plotGraphGlob(A, transparency, results_folder, name_output+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
-                #     pass
-                # print("Computing individual clusters")
-                plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd)
+                    print("Computing timeline")
+                    plotTimeline(observations, results_folder, name_output_res, DHP, indexToWd, consClus, numClusPerMonth=10)
+                    for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
+                        print(f"Computing graphs ({name_norm})")
+                        plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
+                                                results_folder, name_output_res+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                        plotGraphGlob(A, transparency, results_folder, name_output_res+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
+                        pass
+                    print("Computing individual clusters")
+                    plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd)
 
 
 
