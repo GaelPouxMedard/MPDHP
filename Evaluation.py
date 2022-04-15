@@ -1640,7 +1640,7 @@ if __name__=="__main__":
                 DHP = read_particles(output_folder, name_output)
                 observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
 
-                print(f"-------- r={r} - theta0={theta0}--------")
+                print(f"-------- r={r} - theta0={theta0} - time={timescale} --------")
 
                 namethres = ""
                 thresSizeLower = 100
