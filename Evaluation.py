@@ -1646,7 +1646,7 @@ if __name__=="__main__":
                 namethres = ""
                 thresSizeLower = 100
                 thresSizeUpper = 10000  # "Trash" clusters /100.000 obs
-                for (namethres, thresSizeLower, thresSizeUpper) in [("_all", 0, 1000000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]:
+                for (namethres, thresSizeLower, thresSizeUpper) in [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]:
                     name_output_res = name_output+namethres
                     numClusPerMonth = 5
 
@@ -1686,7 +1686,7 @@ if __name__=="__main__":
                         plotGraphGlob(A, transparency, results_folder, name_output_res+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
                         pass
                     print("Computing individual clusters")
-                    plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus, clusToInd)
+                    plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus[:40], clusToInd)
 
 
 

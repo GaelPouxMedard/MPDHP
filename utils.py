@@ -175,6 +175,13 @@ def RBF_kernel(reference_time, time_interval, bandwidth):
 	denominator = (2 * np.pi * bandwidth[None, :] ** 2 ) ** 0.5
 	return np.exp(numerator) / denominator
 
+mu = np.array([0])
+sig = np.array([2])
+for _ in range(10):
+	sig = np.array([np.random.random()*2])
+	print(RBF_kernel(mu, np.array([0]), sig)/RBF_kernel(mu, 2*sig, sig))
+pause()
+
 def triggering_kernel(alpha, reference_time, time_intervals, bandwidth):
 	''' triggering kernel for Hawkes porcess.
 		@param:
