@@ -25,6 +25,12 @@ stopwords_english += ["say", "new", "news", "til"
 
 import re
 
+
+import matplotlib.pyplot as plt
+import numpy as np
+import datetime
+
+
 def treatText(txt):
     # convert to lower case
     lower_string = txt.lower()
@@ -93,6 +99,7 @@ cntSub = []
 allWords = []
 popularity, times = [], []
 allData = 0
+avglen = []
 for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
     with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
         for line in f:
@@ -122,15 +129,13 @@ for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", 
             times.append(float(infos[1])/60)
             popularity.append(int(infos[5]))
             allWords += text
+            avglen.append(len(text))
 
             efflines += 1
 
         print(month, allentries, efflines, len([wd for wd in counts if counts[wd]>3]))
         #break
 
-import matplotlib.pyplot as plt
-import numpy as np
-import datetime
 
 plt.figure(figsize=(10,5))
 

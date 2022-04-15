@@ -1683,6 +1683,10 @@ if __name__=="__main__":
                         print(f"Computing graphs ({name_norm})")
                         plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
                                                 results_folder, name_output_res+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                        plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth**0,
+                                                results_folder, name_output_res+name_norm+"_sansTransp", DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                        plotGraphGlobEveryMonth(observations, A**0, transparency, transparency_permonth,
+                                                results_folder, name_output_res+name_norm+"_onlyTransp", DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
                         plotGraphGlob(A, transparency, results_folder, name_output_res+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
                         pass
                     print("Computing individual clusters")
