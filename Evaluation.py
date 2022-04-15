@@ -270,7 +270,7 @@ def plot_kernel(c, A, transparency, DHP, observations, consClus, clusToInd):
 
     transparency = transparency.sum(axis=-1)
     transparency = normAxis(transparency, axes=[1])
-    transparency = transparency**3
+    transparency = transparency**2
 
     dt = np.linspace(0, np.max(means)+np.max(sigs), 1000)
     trigger = RBF_kernel(means, dt, sigs)
@@ -361,7 +361,7 @@ def plot_real_timeline(c, DHP, observations, consClus, transparency, clusToInd, 
     plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
 
 # Plot each cluster
-def plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd):
+def plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus, clusToInd):
     scale = 4
     for c in sorted(DHP.particles[0].clusters, reverse=False):
         if len(DHP.particles[0].clusters[c].alpha_final)==0:  # Not present for r=0
@@ -387,7 +387,7 @@ def plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, obse
         plot_real_timeline(c, DHP, observations, consClus, transparency, clusToInd, datebeg="01/01/19")
 
         fig.tight_layout()
-        plt.savefig(results_folder+f"/Clusters/cluster_{c}.pdf")
+        plt.savefig(results_folder+f"/Clusters/{namethres}_cluster_{c}.pdf")
         #plt.show()
         plt.close()
 
@@ -1646,7 +1646,7 @@ if __name__=="__main__":
                 namethres = ""
                 thresSizeLower = 100
                 thresSizeUpper = 10000  # "Trash" clusters /100.000 obs
-                for (namethres, thresSizeLower, thresSizeUpper) in [("_mediumclus", 100, 10000), ("_bigclus", 500, 100000)]:
+                for (namethres, thresSizeLower, thresSizeUpper) in [("_all", 0, 1000000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]:
                     name_output_res = name_output+namethres
                     numClusPerMonth = 5
 
@@ -1686,7 +1686,7 @@ if __name__=="__main__":
                         plotGraphGlob(A, transparency, results_folder, name_output_res+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
                         pass
                     print("Computing individual clusters")
-                    plotIndividualClusters(A, transparency, results_folder, DHP, indexToWd, observations, consClus, clusToInd)
+                    plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus, clusToInd)
 
 
 

@@ -132,9 +132,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 
-plt.figure(figsize=(20,5))
+plt.figure(figsize=(10,5))
 
-plt.subplot(1,4,2)
+plt.subplot(2,2,2)
 plt.hist(times, bins=50)
 plt.xlabel("Date")
 plt.ylabel("Count")
@@ -147,28 +147,28 @@ x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d %b") for 
 plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
 plt.title("Times distribution")
 
-plt.subplot(1,4,3)
+plt.subplot(2,2,3)
 plt.hist(popularity, bins=100)
 plt.semilogy()
 plt.ylabel("Count")
 plt.xlabel("Popularity")
 plt.title("Popularity distribution")
 
-plt.subplot(1,4,1)
+plt.subplot(2,2,1)
 un, cnt = np.unique(cntSub, return_counts=True)
 un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
 cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
 xticks = []
 for i, (u,c) in enumerate(zip(un,cnt)):
     plt.bar(i, c, 0.8)
-    xticks.append(u)
+    xticks.append(u.capitalize())
 
 plt.xticks(list(range(len(xticks))), xticks, rotation=45, ha="right")
 plt.ylabel("Count")
 plt.title("Subreddits distribution")
 
 
-plt.subplot(1,4,4)
+plt.subplot(2,2,4)
 un, cnt = np.unique(allWords, return_counts=True)
 un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
 cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
