@@ -543,7 +543,7 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
 
         consClus_month_index = [clusToInd[clusmonth] for clusmonth in consClus_month]
         clusToInd_month = {clusmonth: i for i, clusmonth in enumerate(consClus_month)}
-        print(A.shape, transparency.shape, transparency_permonth.shape, consClus_month_index)
+        print(A.shape, transparency.shape, transparency_permonth.shape, np.shape(ax), month-1, consClus_month_index)
         plotGraphGlob(A[consClus_month_index][:, consClus_month_index], transparency_permonth[month-1][consClus_month_index][:, consClus_month_index], results_folder, name_output, DHP, indexToWd, consClus_month, clusToInd_month, ax_ext=ax[month-1], ax_clus=ax_clus, axesNorm=axesNorm)
 
     monthIndex = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
