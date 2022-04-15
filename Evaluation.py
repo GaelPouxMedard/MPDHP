@@ -1585,7 +1585,6 @@ if __name__=="__main__":
             XP8(folder, output_folder)
 
     else:
-        lamb0_poisson = 0.01  # Set at ~2sigma
 
         means = None
         sigs = None
@@ -1600,6 +1599,7 @@ if __name__=="__main__":
 
         arrR = [1.]#, 0.5, 0., 1.5]
         for theta0 in arrThetas:
+            lamb0_poisson = 0.01  # Set at ~2sigma
             if True:
                 if timescale=="min":
                     lamb0_poisson /= 1
@@ -1658,6 +1658,9 @@ if __name__=="__main__":
                     cnt = cnt[cnt<thresSizeUpper]
                     consClus = [u for _, u in sorted(zip(cnt, un), reverse=True)]
                     print(consClus)
+
+                    if len(consClus)==0:
+                        continue
 
                     DHP = fill_clusters(DHP, consClus)
 
