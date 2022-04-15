@@ -1591,7 +1591,7 @@ if __name__=="__main__":
 
         try:
             timescale = sys.argv[3]
-            theta0 = float(sys.argv[4])
+            #theta0 = float(sys.argv[4])
             arrThetas = [0.01, 0.001]
         except:
             timescale = "d"
