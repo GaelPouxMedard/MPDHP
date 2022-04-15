@@ -91,39 +91,38 @@ efflines = 0
 allentries = 0
 cntSub = []
 popularity, times = [], []
-with open("allNews.txt", "w+", encoding="utf-8") as o:
-    allData = 0
-    for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
-        with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
-            for line in f:
-                infos = line.split("\t")
-                allentries += 1
+allData = 0
+for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
+    with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            infos = line.split("\t")
+            allentries += 1
 
-                cntSub.append(infos[2])
-                times.append(float(infos[1])/60)
+            cntSub.append(infos[2])
+            times.append(float(infos[1])/60)
 
-                try:
-                    popularity.append(int(infos[5]))
-                    if int(infos[5])<20:  # At least a difference of +20 upvotes
-                        continue
-                except:
+            try:
+                popularity.append(int(infos[5]))
+                if int(infos[5])<20:  # At least a difference of +20 upvotes
                     continue
+            except:
+                continue
 
-                time = float(infos[1])/60  # In minutes
+            time = float(infos[1])/60  # In minutes
 
-                text = treatText(infos[3])
-                #print(line)
-                allData += 1
+            text = treatText(infos[3])
+            #print(line)
+            allData += 1
 
-                text = [wd for wd in text.split(" ") if counts[wd]>3]
-                if not len(text)>=3:
-                    continue
+            text = [wd for wd in text.split(" ") if counts[wd]>3]
+            if not len(text)>=3:
+                continue
 
-                o.write(f"{time}\t{','.join(text)}\n")
-                efflines += 1
+            o.write(f"{time}\t{','.join(text)}\n")
+            efflines += 1
 
-            print(month, allentries, efflines, len([wd for wd in counts if counts[wd]>3]))
-            #break
+        print(month, allentries, efflines, len([wd for wd in counts if counts[wd]>3]))
+        #break
 
 import matplotlib.pyplot as plt
 import numpy as np
