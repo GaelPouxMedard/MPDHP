@@ -535,7 +535,7 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
 
     if len(popClus_month)==1: ax=np.array([ax])
     indexes_month = list(sorted(popClus_month))
-    for month in sorted(popClus_month):
+    for i_month, month in enumerate(sorted(popClus_month)):
         entries_to_cons = list(sorted(popClus_month[month].items(), key=lambda x: x[1], reverse=True)[:numClusPerMonth])  # Select top 5 clusters
         consClus_month = []
         for clus, cnt in entries_to_cons:
@@ -544,7 +544,7 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
         consClus_month_index = [clusToInd[clusmonth] for clusmonth in consClus_month]
         clusToInd_month = {clusmonth: i for i, clusmonth in enumerate(consClus_month)}
         print(A.shape, transparency.shape, transparency_permonth.shape, np.shape(ax), month-1, consClus_month_index)
-        plotGraphGlob(A[consClus_month_index][:, consClus_month_index], transparency_permonth[month-1][consClus_month_index][:, consClus_month_index], results_folder, name_output, DHP, indexToWd, consClus_month, clusToInd_month, ax_ext=ax[month-1], ax_clus=ax_clus, axesNorm=axesNorm)
+        plotGraphGlob(A[consClus_month_index][:, consClus_month_index], transparency_permonth[month-1][consClus_month_index][:, consClus_month_index], results_folder, name_output, DHP, indexToWd, consClus_month, clusToInd_month, ax_ext=ax[i_month], ax_clus=ax_clus, axesNorm=axesNorm)
 
     monthIndex = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
     for i in range(len(ax)):

@@ -100,7 +100,6 @@ with open("allNews.txt", "w+", encoding="utf-8") as o:
                 allentries += 1
 
                 cntSub.append(infos[2])
-                popularity.append(int(infos[5]))
                 times.append(float(infos[1])/60)
 
                 try:
