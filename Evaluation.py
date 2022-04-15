@@ -1665,7 +1665,7 @@ if __name__=="__main__":
                     DHP = fill_clusters(DHP, consClus)
 
                     print("Computing A and weigths")
-                    #plotAdjTrans(results_folder, name_output_res, DHP, indexToWd, observations, consClus)
+                    plotAdjTrans(results_folder, name_output_res, DHP, indexToWd, observations, consClus)
 
                     A = np.load(results_folder+name_output_res+"_adjacency.npy")
                     transparency = np.load(results_folder+name_output_res+"_transparency.npy")
