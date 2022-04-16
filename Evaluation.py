@@ -404,7 +404,7 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
     transparency = normAxis(transparency, axes=axesNorm)
     A = normAxis(A, axes=axesNorm)
 
-    cmap = matplotlib.cm.get_cmap('afmhot')
+    cmap = matplotlib.cm.get_cmap('afmhot_r')
     scale = len(means)*5
     scaleedge = 0.01
 
@@ -451,7 +451,7 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
 
             for c2 in consClus:
                 transp = transparency[clusToInd[c], clusToInd[c2], l]
-                color = cmap(A[clusToInd[c], clusToInd[c2], l])
+                color = cmap(float(A[clusToInd[c], clusToInd[c2], l]))
 
                 if c==c2:
                     costheta = np.cos(45)
