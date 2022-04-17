@@ -401,10 +401,13 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
 
     if axesNorm is None:
         axesNorm = [2]
-    transparency = normAxis(transparency, axes=axesNorm)
-    A = normAxis(A, axes=axesNorm)
 
-    cmap = matplotlib.cm.get_cmap('afmhot')
+    if not np.allclose(transparency, np.ones((transparency.shape))):
+        transparency = normAxis(transparency, axes=axesNorm)
+    if not np.allclose(A, np.ones((A.shape))):
+        A = normAxis(A, axes=axesNorm)
+
+    cmap = matplotlib.cm.get_cmap('afmhot_r')
     scale = len(means)*5
     scaleedge = 0.01
 
@@ -450,7 +453,7 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
                 ax_clus[clusToInd[c]].set_yticks([])
 
             for c2 in consClus:
-                transp = transparency[clusToInd[c], clusToInd[c2], l]
+                transp = float(transparency[clusToInd[c], clusToInd[c2], l])
                 color = cmap(float(A[clusToInd[c], clusToInd[c2], l]))
 
                 if c==c2:
