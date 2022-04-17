@@ -404,7 +404,7 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
     transparency = normAxis(transparency, axes=axesNorm)
     A = normAxis(A, axes=axesNorm)
 
-    cmap = matplotlib.cm.get_cmap('afmhot_r')
+    cmap = matplotlib.cm.get_cmap('afmhot')
     scale = len(means)*5
     scaleedge = 0.01
 
