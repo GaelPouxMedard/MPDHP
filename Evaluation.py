@@ -85,7 +85,7 @@ def readObservations(folder, name_ds, output_folder, onlyreturnindexwds=False):
                 print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")
                 break
 
-            if i > 5000 and False:
+            if i > 500 and False:
                 print("BROKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN")  # ============================================
                 break
 
@@ -568,8 +568,10 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
 
 # Plot... Timeline!
 def plotTimeline(observations, results_folder, name_output, DHP, indexToWd, consClus, numClusPerMonth=5):
-    res = 12*30/3
+    res = 12*30/0.5  # Half day
     res = int(res)
+
+    ensureFolder(results_folder)
 
     popClus_month = {}
     for c, o in zip(DHP.particles[0].docs2cluster_ID, observations):
@@ -655,24 +657,65 @@ def plotTimeline(observations, results_folder, name_output, DHP, indexToWd, cons
         #plt.show()
         plt.close()
 
+def weighted_avg_and_std(values, weights):
+    """
+    Return the weighted average and standard deviation.
 
-def metrics(A, transparency, DHP, clusToInd):
-    effective_interaction = transparency.copy()
-    for c in clusToInd:
-        effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
-    mean = np.sum((A-lamb0_poisson)*transparency, axis=(0,1))/np.sum((A-lamb0_poisson), axis=(0,1))
-    print(mean)
-    mean = np.sum((A-lamb0_poisson), axis=(0,1))/np.sum(transparency**0, axis=(0,1))
-    print(mean)
-    mean = np.sum(transparency, axis=(0,1))/np.sum(transparency**0, axis=(0,1))
-    print(mean)
+    values, weights -- Numpy ndarrays with the same shape.
+    """
+    values = np.array(values)
+    weights = np.array(weights)
+    average = np.average(values, weights=weights)
+    # Fast and numerically precise:
+    variance = np.average((values-average)**2, weights=weights)
+    return (average, np.sqrt(variance))
+
+def metrics(A, transparency, DHP, clusToInd, metadata):
+    numclus = len(A)
+    allocs = DHP.particles[0].docs2cluster_ID
+    un, cntpop = np.unique(allocs, return_counts=True)
+    un = [u for _, u in sorted(zip(cntpop, un), reverse=True)]
+    cntpop = [c for c, u in sorted(zip(cntpop, un), reverse=True)]
+    avgpop = np.mean(cntpop)
+    stdpop = np.std(cntpop)
+
+    top20clus = un[:20]
+    Stext = []
+    SSub = []
+    weigth = []
+    for i in range(len(top20clus)):
+        distText = DHP.particles[0].clusters[top20clus[i]].word_distribution
+        distText = distText/float(np.sum(distText))
+
+        subs, distSubs = np.unique(metadata[DHP.particles[0].docs2cluster_ID==top20clus[i]], return_counts=True)
+        distSubs = distSubs/float(np.sum(distSubs))
+
+        Stext.append(np.sum(distText*np.log(distText+1e-20))/np.log(1./len(distText)))
+        SSub.append(np.sum(distSubs*np.log(distSubs+1e-20))/np.log(1./len(distSubs)))
+        weigth.append(cntpop[i])
+
+    avgStext, stdStext = weighted_avg_and_std(Stext, weigth)
+    avgSSub, stdSSub = weighted_avg_and_std(SSub, weigth)
+
+    print(f"{int(np.round(numclus, 0))} & {int(np.round(avgpop, 0))}({int(np.round(stdpop, 0))}) & "
+          f"{np.round(avgStext, 3)}({int(np.round(stdStext*1e3, 0))}) & {np.round(avgSSub, 3)}({int(np.round(stdSSub*1e3, 0))}) \\\\")
+
+    # effective_interaction = transparency.copy()
+    # for c in clusToInd:
+    #     effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+    # mean = np.sum((A-lamb0_poisson)*transparency, axis=(0,1))/np.sum((A-lamb0_poisson), axis=(0,1))
+    # print(mean)
+    # mean = np.sum((A-lamb0_poisson), axis=(0,1))/np.sum(transparency**0, axis=(0,1))
+    # print(mean)
+    # mean = np.sum(transparency, axis=(0,1))/np.sum(transparency**0, axis=(0,1))
+    # print(mean)
 
 if __name__=="__main__":
     try:
         RW = sys.argv[1]
         XP = sys.argv[2]
     except:
-        RW = "1"
+        RW = "bacasable"
         XP = "osef"
 
 
@@ -1586,6 +1629,119 @@ if __name__=="__main__":
             XP7(folder, output_folder)
         if XP=="8":
             XP8(folder, output_folder)
+
+    elif RW=="1":
+
+        means = None
+        sigs = None
+
+        try:
+            timescale = sys.argv[3]
+            arrThetas = [0.01, 0.001]
+            arrR = [1., 0.5, 0., 1.5]
+            listThres = [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
+        except:
+            timescale = "h"
+            arrThetas = [0.01, 0.001]
+            arrR = [1., 1.5, 0., 0.5, ]
+            listThres = [("_all", 10, 100000)]
+
+
+        for theta0 in arrThetas:
+            lamb0_poisson = 0.01  # Set at ~2sigma
+            if True:
+                if timescale=="min":
+                    lamb0_poisson /= 1
+                    means = [10*(i) for i in range(9)]  # Until 90min
+                    sigs = [5 for i in range(9)]
+                elif timescale=="h":
+                    lamb0_poisson /= 10
+                    means = [120*(i) for i in range(5)]  # Until 600min
+                    sigs = [60 for i in range(5)]
+                elif timescale=="d":
+                    lamb0_poisson /= 100
+                    means = [60*24*(i) for i in range(7)]  # Until 86400min
+                    sigs = [60*24/2 for i in range(7)]
+
+                means = np.array(means)
+                sigs = np.array(sigs)
+
+                alpha0 = 0.5  # Uniform beta or Dirichlet prior
+
+                sample_num = 100000
+                particle_num = 8
+                multivariate = True
+
+                folder = "data/News/"
+                output_folder = "output/News/"
+
+                lang = XP
+                name_ds = f"allNews.txt"
+                results_folder = f"results/News/{lang}/{timescale}/{np.round(theta0, 4)}/"
+                ensureFolder(results_folder+"Clusters/")
+
+            for r in arrR:
+                name_output = f"News_timescale={timescale}_theta0={np.round(theta0,3)}_lamb0={lamb0_poisson}_" \
+                              f"r={np.round(r,1)}_multi={multivariate}_samples={sample_num}_parts={particle_num}"
+
+
+                indexToWd = readObservations(folder, name_ds, output_folder, onlyreturnindexwds=True)
+                DHP = read_particles(output_folder, name_output)
+
+                observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+                observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
+
+                with open("data/News/metadata.txt", "r") as f:
+                    metadata = np.array(f.read().split("\n"))[:len(DHP.particles[0].docs2cluster_ID)]
+
+                if len(DHP.particles[0].docs2cluster_ID)<100000:
+                    print("======================== DATA MISSING !!!!!!!! =======================")
+
+                print(f"--------  time={timescale} - theta0={theta0} - r={r} ---------")
+
+
+                for (namethres, thresSizeLower, thresSizeUpper) in listThres:
+                    name_output_res = name_output+namethres
+                    numClusPerMonth = 5
+
+                    un, cnt = np.unique(DHP.particles[0].docs2cluster_ID, return_counts=True)
+                    #print(list(sorted(cnt, reverse=True)))
+                    un = un[cnt>thresSizeLower]
+                    cnt = cnt[cnt>thresSizeLower]
+                    un = un[cnt<thresSizeUpper]
+                    cnt = cnt[cnt<thresSizeUpper]
+                    consClus = [u for _, u in sorted(zip(cnt, un), reverse=True)]
+                    #print(consClus)
+
+                    if len(consClus)==0:
+                        continue
+
+                    DHP = fill_clusters(DHP, consClus)
+
+                    A = np.load(results_folder+name_output_res+"_adjacency.npy")
+                    transparency = np.load(results_folder+name_output_res+"_transparency.npy")
+                    transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
+                    with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
+                        clusToInd = pickle.load(f)
+
+                    # print("Computing metrics")
+                    # metrics(A, transparency, DHP, clusToInd, metadata)
+
+                    print("Computing timeline")
+                    plotTimeline(observations, results_folder, name_output_res, DHP, indexToWd, consClus, numClusPerMonth=10)
+                    continue
+                    # for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
+                    #     print(f"Computing graphs ({name_norm})")
+                    #     plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
+                    #                             results_folder, name_output_res+name_norm, DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                    #     plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth**0,
+                    #                             results_folder, name_output_res+name_norm+"_sansTransp", DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                    #     plotGraphGlobEveryMonth(observations, A**0, transparency, transparency_permonth,
+                    #                             results_folder, name_output_res+name_norm+"_onlyTransp", DHP, indexToWd, consClus, clusToInd, numClusPerMonth=10, axesNorm=axesNorm)
+                    #     plotGraphGlob(A, transparency, results_folder, name_output_res+name_norm, DHP, indexToWd, consClus[:10], clusToInd, axesNorm=axesNorm)
+                    #     pass
+                    # print("Computing individual clusters")
+                    # plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus[:40], clusToInd)
 
     else:
 
