@@ -1691,8 +1691,8 @@ if __name__=="__main__":
                 observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
                 observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
 
-                with open("data/News/metadata.txt", "r") as f:
-                    metadata = np.array(f.read().split("\n"))[:len(DHP.particles[0].docs2cluster_ID)]
+                # with open("data/News/metadata.txt", "r") as f:
+                #     metadata = np.array(f.read().split("\n"))[:len(DHP.particles[0].docs2cluster_ID)]
 
                 if len(DHP.particles[0].docs2cluster_ID)<100000:
                     print("======================== DATA MISSING !!!!!!!! =======================")
