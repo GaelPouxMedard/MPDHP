@@ -1630,7 +1630,7 @@ if __name__=="__main__":
         if XP=="8":
             XP8(folder, output_folder)
 
-    elif RW=="1":
+    elif RW=="2":
 
         means = None
         sigs = None
