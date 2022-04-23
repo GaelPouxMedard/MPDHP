@@ -224,8 +224,8 @@ def plotAdjTrans(results_folder, name_output, DHP, indexToWd, observations, cons
         div_permonth = np.zeros((12))
 
         for i, t in enumerate(active_timestamps[active_timestamps[:, 0]==c][:, 1]):
-            active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>active_timestamps[i, 1]-np.max(means)-np.max(sigs)]
-            active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<active_timestamps[i,1]]
+            active_timestamps_cons = active_timestamps[active_timestamps[:, 1]>t-np.max(means)-np.max(sigs)]
+            active_timestamps_cons = active_timestamps_cons[active_timestamps_cons[:, 1]<t]
             timeseq = active_timestamps_cons[:, 1]
             clusseq = active_timestamps_cons[:, 0]
             month = datetime.datetime.fromtimestamp(t*60).month-1  # Bc month=index, begins at 0
@@ -435,7 +435,7 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
             xnode, ynode = pos[clusToInd[c]]
             ax[l].plot([xnode], [ynode], "o", markersize = radius*1000, c=colorClus[c])
 
-            if not bool(ax_clus[clusToInd[c]].get_images()):
+            if not bool(ax_clus[clusToInd[c]].get_images()) and False:
                 wds = {indexToWd[idx]: count for count, idx in reversed(sorted(zip(DHP.particles[0].clusters[c].word_distribution, list(range(len(DHP.particles[0].clusters[c].word_distribution)))))) if count!=0}
                 imgWC = makeWordCloud(wds, onlyreturnImg=True, colormap="cividis")
                 imgWC=imgWC.to_array()
@@ -500,6 +500,8 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
         ax[l].set_ylim([miny, maxy])
         ax[l].set_xticks([])
         ax[l].set_yticks([])
+    # plt.show()
+    # pause()
 
     #plt.tight_layout()
     if ax_ext is None:
@@ -509,6 +511,14 @@ def plotGraphGlob(A, transparency, results_folder, name_output, DHP, indexToWd, 
         plt.figure(fig_clus.number)
         plt.savefig(results_folder+name_output+"_Recap_clus.jpg")
         plt.close(fig_clus)
+
+# means = np.random.random((5))
+# sigs = np.random.random((5))
+# A = np.random.random((5, 5, 5))
+# W = np.random.random((5, 5, 5))/10000
+# plotGraphGlob(A**0, W, "results_folder", "name_output", None, None, list(range(5)), {i:i for i in range(5)}, axesNorm=[0,1,2])
+#
+# pause()
 
 def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth, results_folder, name_output, DHP, indexToWd, consClus, clusToInd, axesNorm=None, numClusPerMonth=5):
     popClus_month = {}
@@ -665,50 +675,106 @@ def weighted_avg_and_std(values, weights):
     """
     values = np.array(values)
     weights = np.array(weights)
-    average = np.average(values, weights=weights)
-    # Fast and numerically precise:
-    variance = np.average((values-average)**2, weights=weights)
+
+    average = np.nansum(values*weights)/np.nansum(weights)
+    variance = np.nansum(((values-average)**2)*weights)/np.nansum(weights)
     return (average, np.sqrt(variance))
 
 def metrics(A, transparency, DHP, clusToInd, metadata):
-    numclus = len(A)
-    allocs = DHP.particles[0].docs2cluster_ID
-    un, cntpop = np.unique(allocs, return_counts=True)
-    un = [u for _, u in sorted(zip(cntpop, un), reverse=True)]
-    cntpop = [c for c, u in sorted(zip(cntpop, un), reverse=True)]
-    avgpop = np.mean(cntpop)
-    stdpop = np.std(cntpop)
+    # allocs = DHP.particles[0].docs2cluster_ID
+    # un, cntpop = np.unique(allocs, return_counts=True)
+    # un = [u for _, u in sorted(zip(cntpop, un), reverse=True)]
+    #
+    # cntpop = [c for c, u in sorted(zip(cntpop, un), reverse=True)]
+    # avgpop = np.mean(cntpop)
+    # stdpop = np.std(cntpop)
+    # numclus = len(un)
+    # top20clus = un[:20]
+    #
+    # unbase, distbase = np.unique(metadata, return_counts=True)
+    # distbase = np.array([ds for _, ds in sorted(zip(unbase, distbase))])
+    # unbase = np.array([s for s, ds in sorted(zip(unbase, distbase))])
+    # distbase = distbase/np.sum(distbase)
+    #
+    # Stext = []
+    # SSub = []
+    # devSubs = []
+    # weigth = []
+    # for i in range(len(top20clus)):
+    #     # distText = DHP.particles[0].clusters[top20clus[i]].word_distribution
+    #     # distText = distText/float(np.sum(distText))
+    #
+    #     subs, distSubs = np.unique(metadata[DHP.particles[0].docs2cluster_ID==top20clus[i]], return_counts=True)
+    #     if len(subs)<len(unbase):
+    #         subs, distSubs = list(subs), list(distSubs)
+    #         for u in unbase:
+    #             if u not in subs:
+    #                 subs.append(u)
+    #                 distSubs.append(1e-20)
+    #         subs, distSubs = np.array(subs), np.array(distSubs)
+    #     distSubs = np.array([ds for _, ds in sorted(zip(subs, distSubs))])
+    #     subs = np.array([s for s, ds in sorted(zip(subs, distSubs))])
+    #     distSubs = distSubs/float(np.sum(distSubs))
+    #
+    #     # Stext.append(np.sum(distText*np.log(distText+1e-20))/np.log(1./len(distText)))
+    #     SSub.append(np.sum(distSubs*np.log(distSubs))/np.log(1./len(distSubs)))
+    #     Stext.append(0)
+    #     weigth.append(cntpop[i])
+    #
+    # avgStext, stdStext = weighted_avg_and_std(Stext, weigth)
+    # avgSSub, stdSSub = weighted_avg_and_std(SSub, weigth)
+    #
+    # txt = ""
+    # if r>=1e-5:
+    #     txt += "& "
+    # txt += f"& {np.round(r, 1)} & {int(np.round(numclus, 0))} " \
+    #        f"& {int(np.round(avgpop, 0))} " \
+    #        f"& {np.round(avgStext, 3)}({int(np.round(stdStext*1e3, 0))}) " \
+    #        f"& {np.round(avgSSub, 3)}({int(np.round(stdSSub*1e3, 0))}) \\\\"
+    # print(txt)
 
-    top20clus = un[:20]
-    Stext = []
-    SSub = []
-    weigth = []
-    for i in range(len(top20clus)):
-        distText = DHP.particles[0].clusters[top20clus[i]].word_distribution
-        distText = distText/float(np.sum(distText))
+    effective_interaction = transparency.copy()
 
-        subs, distSubs = np.unique(metadata[DHP.particles[0].docs2cluster_ID==top20clus[i]], return_counts=True)
-        distSubs = distSubs/float(np.sum(distSubs))
+    effective_interaction[A<1e-10] = np.nan
+    A[A<1e-10] = np.nan
+    A[effective_interaction<1e-10] = np.nan
+    effective_interaction[effective_interaction<1e-10] = np.nan
 
-        Stext.append(np.sum(distText*np.log(distText+1e-20))/np.log(1./len(distText)))
-        SSub.append(np.sum(distSubs*np.log(distSubs+1e-20))/np.log(1./len(distSubs)))
-        weigth.append(cntpop[i])
+    for c in clusToInd:
+        effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+    effective_interaction[effective_interaction<0] = 0
 
-    avgStext, stdStext = weighted_avg_and_std(Stext, weigth)
-    avgSSub, stdSSub = weighted_avg_and_std(SSub, weigth)
 
-    print(f"{int(np.round(numclus, 0))} & {int(np.round(avgpop, 0))}({int(np.round(stdpop, 0))}) & "
-          f"{np.round(avgStext, 3)}({int(np.round(stdStext*1e3, 0))}) & {np.round(avgSSub, 3)}({int(np.round(stdSSub*1e3, 0))}) \\\\")
 
-    # effective_interaction = transparency.copy()
-    # for c in clusToInd:
-    #     effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
-    # mean = np.sum((A-lamb0_poisson)*transparency, axis=(0,1))/np.sum((A-lamb0_poisson), axis=(0,1))
-    # print(mean)
-    # mean = np.sum((A-lamb0_poisson), axis=(0,1))/np.sum(transparency**0, axis=(0,1))
-    # print(mean)
-    # mean = np.sum(transparency, axis=(0,1))/np.sum(transparency**0, axis=(0,1))
-    # print(mean)
+    meanA = np.nanmean(A)
+    stdA = np.nanstd(A)
+
+    meanW = np.nanmean(effective_interaction)
+    stdW = np.nanstd(effective_interaction)
+
+    meanAW = np.nanmean(A*effective_interaction)
+    stdAW = np.nanstd(A*effective_interaction)
+    meanAWDiag = np.nanmean(np.diagonal(A*effective_interaction, axis1=0, axis2=1))
+    stdAWDiag = np.nanstd(np.diagonal(A*effective_interaction, axis1=0, axis2=1))
+
+    meanAW, stdAW = weighted_avg_and_std(A.flatten(), effective_interaction.flatten())
+
+    meanAWDiag, stdAWDiag = weighted_avg_and_std(np.diagonal(A, axis1=0, axis2=1).flatten(), np.diagonal(effective_interaction, axis1=0, axis2=1).flatten())
+
+    meanWDiag = np.nanmean(np.diagonal(effective_interaction, axis1=0, axis2=1))
+    stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1))
+
+    errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+
+    txt = ""
+    if r>=1e-5:
+        txt += "& "
+    txt += f"& {np.round(r, 1)} " \
+           f"& {np.round(meanA*1e2, 0)}({np.round(stdA*1e2, 0)}) " \
+           f"& {np.round(meanW*1e5, 0)}({np.round(stdW*1e5, 0)}) " \
+           f"& {np.round(meanAW*1e2, 0)}({np.round(stdAW*1e2, 0)}) " \
+           f"& {np.round((meanWDiag/meanW), 1)}({np.round(errDiag*1e1, 0)}) \\\\"
+    print(txt)
 
 if __name__=="__main__":
     try:
@@ -1630,7 +1696,7 @@ if __name__=="__main__":
         if XP=="8":
             XP8(folder, output_folder)
 
-    elif RW=="2":
+    elif RW=="bacasable":
 
         means = None
         sigs = None
@@ -1641,11 +1707,12 @@ if __name__=="__main__":
             arrR = [1., 0.5, 0., 1.5]
             listThres = [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
-            timescale = "h"
-            arrThetas = [0.01, 0.001]
-            arrR = [1., 1.5, 0., 0.5, ]
+            timescale = "d"
+            arrThetas = [0.001]#, 0.001]
+            arrR = [0., 0.5, 1., 1.5, ]
             listThres = [("_all", 10, 100000)]
 
+        print(timescale, arrThetas, arrR)
 
         for theta0 in arrThetas:
             lamb0_poisson = 0.01  # Set at ~2sigma
@@ -1688,16 +1755,16 @@ if __name__=="__main__":
                 indexToWd = readObservations(folder, name_ds, output_folder, onlyreturnindexwds=True)
                 DHP = read_particles(output_folder, name_output)
 
-                observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
-                observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
+                # observations, vocabulary_size, indexToWd = readObservations(folder, name_ds, output_folder)
+                # observations = observations[:len(DHP.particles[0].docs2cluster_ID)]
 
-                # with open("data/News/metadata.txt", "r") as f:
-                #     metadata = np.array(f.read().split("\n"))[:len(DHP.particles[0].docs2cluster_ID)]
+                with open("data/News/metadata.txt", "r") as f:
+                    metadata = np.array(f.read().split("\n"))[:len(DHP.particles[0].docs2cluster_ID)]
 
                 if len(DHP.particles[0].docs2cluster_ID)<100000:
                     print("======================== DATA MISSING !!!!!!!! =======================")
 
-                print(f"--------  time={timescale} - theta0={theta0} - r={r} ---------")
+                #print(f"--------  time={timescale} - theta0={theta0} - r={r} ---------")
 
 
                 for (namethres, thresSizeLower, thresSizeUpper) in listThres:
@@ -1716,20 +1783,24 @@ if __name__=="__main__":
                     if len(consClus)==0:
                         continue
 
-                    DHP = fill_clusters(DHP, consClus)
+                    try:
+                        pass
+                        #DHP = fill_clusters(DHP, consClus)
 
-                    A = np.load(results_folder+name_output_res+"_adjacency.npy")
-                    transparency = np.load(results_folder+name_output_res+"_transparency.npy")
-                    transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
-                    with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
-                        clusToInd = pickle.load(f)
+                        A = np.load(results_folder+name_output_res+"_adjacency.npy")
+                        transparency = np.load(results_folder+name_output_res+"_transparency.npy")
+                        #transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
+                        with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
+                            clusToInd = pickle.load(f)
 
-                    # print("Computing metrics")
-                    # metrics(A, transparency, DHP, clusToInd, metadata)
+                        #print("Computing metrics")
+                        metrics(A, transparency, DHP, clusToInd, metadata)
+                        continue
+                    except:
+                        continue
 
-                    print("Computing timeline")
-                    plotTimeline(observations, results_folder, name_output_res, DHP, indexToWd, consClus, numClusPerMonth=10)
-                    continue
+                    # print("Computing timeline")
+                    # plotTimeline(observations, "temp/"+results_folder, name_output_res, DHP, indexToWd, consClus, numClusPerMonth=10)
                     # for name_norm, axesNorm in [("_normKernel", [2]), ("_normOutEdges", [0]), ("_normInEdges", [1]), ("_normAbs", [0,1,2])]:
                     #     print(f"Computing graphs ({name_norm})")
                     #     plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth,
@@ -1743,7 +1814,7 @@ if __name__=="__main__":
                     # print("Computing individual clusters")
                     # plotIndividualClusters(A, transparency, results_folder, namethres, DHP, indexToWd, observations, consClus[:40], clusToInd)
 
-    else:
+    elif RW=="2":
 
         means = None
         sigs = None

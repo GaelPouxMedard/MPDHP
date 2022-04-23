@@ -93,109 +93,114 @@ def treatText(txt):
 with open("counts.pkl", "rb") as f:
     counts = pickle.load(f)
 
-# efflines = 0
-# allentries = 0
-# cntSub = []
-# allWords = []
-# popularity, times = [], []
-# allData = 0
-# avglen = []
-# for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
-#     with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
-#         for line in f:
-#             infos = line.split("\t")
-#             allentries += 1
-#
-#
-#             try:
-#                 if int(infos[5])<20:  # At least a difference of +20 upvotes
-#                     continue
-#             except:
-#                 continue
-#
-#
-#
-#             time = float(infos[1])/60  # In minutes
-#
-#             text = treatText(infos[3])
-#             #print(line)
-#             allData += 1
-#
-#             text = [wd for wd in text.split(" ") if counts[wd]>3]
-#             if not len(text)>=3:
-#                 continue
-#
-#             cntSub.append(infos[2])
-#             times.append(float(infos[1])/60)
-#             popularity.append(int(infos[5]))
-#             allWords += text
-#             avglen.append(len(text))
-#
-#             efflines += 1
-#
-#         print(month, allentries, efflines, len([wd for wd in counts if counts[wd]>3]))
-#         #break
-#
-#
-# plt.figure(figsize=(10,5))
-#
-# plt.subplot(2,2,2)
-# plt.hist(times, bins=50)
-# plt.xlabel("Date")
-# plt.ylabel("Count")
-# dt = 30*60*24
-# x_ticks = [np.min(times)]
-# while x_ticks[-1]<np.max(times):
-#     x_ticks.append(x_ticks[-1]+dt)
-# x_ticks = x_ticks[:-1]
-# x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d %b") for ts in x_ticks]
-# plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
-# plt.title("Times distribution")
-#
-# plt.subplot(2,2,3)
-# plt.hist(popularity, bins=100)
-# plt.semilogy()
-# plt.ylabel("Count")
-# plt.xlabel("Popularity")
-# plt.title("Popularity distribution")
-#
-# plt.subplot(2,2,1)
-# un, cnt = np.unique(cntSub, return_counts=True)
-# un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
-# cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
-# xticks = []
-# for i, (u,c) in enumerate(zip(un,cnt)):
-#     plt.bar(i, c, 0.8)
-#     xticks.append(u.capitalize())
-#
-# plt.xticks(list(range(len(xticks))), xticks, rotation=45, ha="right")
-# plt.ylabel("Count")
-# plt.title("Subreddits distribution")
-#
-#
-# plt.subplot(2,2,4)
-# un, cnt = np.unique(allWords, return_counts=True)
-# un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
-# cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
-# plt.hist(cnt, bins=100)
-#
-# print(len(allWords), len(un))
-#
-# plt.semilogy()
-# plt.ylabel("Density")
-# plt.xlabel("Count")
-# plt.title("Word counts distribution")
-#
-#
-#
-# for a in plt.gcf().get_axes():
-#     a.label_outer()
-#
-#
-# plt.tight_layout()
-# plt.savefig("Stats_DS_after_red.pdf")
-# plt.show()
-#
+efflines = 0
+allentries = 0
+cntSub = []
+allWords = []
+popularity, times = [], []
+allData = 0
+avglen = []
+for month in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]:
+    with open(f"news_titles_RS_2019-{month}.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            infos = line.split("\t")
+            allentries += 1
+
+
+            try:
+                if int(infos[5])<20:  # At least a difference of +20 upvotes
+                    continue
+            except:
+                continue
+
+
+
+            time = float(infos[1])/60  # In minutes
+
+            text = treatText(infos[3])
+            #print(line)
+            allData += 1
+
+            text = [wd for wd in text.split(" ") if counts[wd]>3]
+            if not len(text)>=3:
+                continue
+
+            cntSub.append(infos[2])
+            times.append(float(infos[1])/60)
+            popularity.append(int(infos[5]))
+            allWords += text
+            avglen.append(len(text))
+
+            efflines += 1
+
+        print(month, allentries, efflines, len([wd for wd in counts if counts[wd]>3]))
+        #break
+
+
+plt.figure(figsize=(10,5))
+
+plt.subplot(2,2,4)
+plt.hist(times, bins=50)
+plt.xlabel("Date")
+plt.ylabel("Count")
+dt = 30*60*24
+x_ticks = [np.min(times)]
+while x_ticks[-1]<np.max(times):
+    x_ticks.append(x_ticks[-1]+dt)
+x_ticks = x_ticks[:-1]
+x_labels = [datetime.datetime.fromtimestamp(float(ts)*60).strftime("%d %b") for ts in x_ticks]
+plt.xticks(x_ticks, x_labels, rotation=45, ha="right")
+plt.title("Times distribution")
+
+plt.subplot(2,2,2)
+plt.hist(popularity, bins=100)
+plt.semilogy()
+plt.ylabel("Count")
+plt.xlabel("Popularity")
+plt.title("Popularity distribution")
+
+plt.subplot(2,2,3)
+un, cnt = np.unique(cntSub, return_counts=True)
+un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
+cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
+xticks = []
+for i, (u,c) in enumerate(zip(un,cnt)):
+    plt.bar(i, c, 0.8)
+    xticks.append(u.capitalize())
+
+print(un)
+print(cnt/np.sum(cnt))
+
+plt.xticks(list(range(len(xticks))), xticks, rotation=45, ha="right")
+plt.ylabel("Count")
+plt.title("Subreddits distribution")
+
+
+plt.subplot(2,2,1)
+un, cnt = np.unique(allWords, return_counts=True)
+un = [u for _, u in sorted(zip(cnt, un), reverse=True)]
+cnt = [c for c, u in sorted(zip(cnt, un), reverse=True)]
+plt.hist(cnt, bins=100)
+
+print(len(allWords), len(un))
+
+plt.semilogy()
+plt.ylabel("Density")
+plt.xlabel("Count")
+plt.title("Word counts distribution")
+
+
+
+for i_a, a in enumerate(plt.gcf().get_axes()):
+    pass
+    # if i_a == 0:
+    #     a.label_outer()
+
+
+plt.tight_layout()
+plt.savefig("Stats_DS_after_red.pdf")
+plt.show()
+
 pause()
 
 efflines = 0
