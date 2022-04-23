@@ -1737,9 +1737,9 @@ if __name__=="__main__":
 
         try:
             timescale = sys.argv[3]
-            arrThetas = [0.01]
+            arrThetas = [0.01, 0.001]
             arrR = [1., 0.5, 0., 1.5]
-            listThres = [("_all", 10, 100000)]#, ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
+            listThres = [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
             timescale = "h"
             arrThetas = [0.01]#, 0.001]
@@ -1856,13 +1856,15 @@ if __name__=="__main__":
 
         try:
             timescale = sys.argv[3]
-            #theta0 = float(sys.argv[4])
-            arrThetas = [0.01, 0.001]
+            arrThetas = [0.01]#, 0.001]
+            arrR = [1., 0.5, 0., 1.5]
+            listThres = [("_all", 10, 100000)]#, ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
             timescale = "d"
             arrThetas = [0.01]
+            arrR = [1., 0.5, 0., 1.5]
+            listThres = [("_all", 10, 100000)]#, ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
 
-        arrR = [1.]#, 0.5, 0., 1.5]
         for theta0 in arrThetas:
             lamb0_poisson = 0.01  # Set at ~2sigma
             if True:
@@ -1911,7 +1913,7 @@ if __name__=="__main__":
                 namethres = ""
                 thresSizeLower = 100
                 thresSizeUpper = 10000  # "Trash" clusters /100.000 obs
-                for (namethres, thresSizeLower, thresSizeUpper) in [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]:
+                for (namethres, thresSizeLower, thresSizeUpper) in listThres:
                     name_output_res = name_output+namethres
                     numClusPerMonth = 5
 
