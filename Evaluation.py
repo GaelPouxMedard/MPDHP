@@ -667,7 +667,7 @@ def plotTimeline(observations, results_folder, name_output, DHP, indexToWd, cons
         #plt.show()
         plt.close()
 
-def weighted_avg_and_std(values, weights):
+def weighted_avg_and_std(values, weights, axis=None):
     """
     Return the weighted average and standard deviation.
 
@@ -676,105 +676,139 @@ def weighted_avg_and_std(values, weights):
     values = np.array(values)
     weights = np.array(weights)
 
-    average = np.nansum(values*weights)/np.nansum(weights)
-    variance = np.nansum(((values-average)**2)*weights)/np.nansum(weights)
+    if axis is None:
+        axis = tuple(list(range(len(values.shape))))
+
+    average = np.nansum(values*weights, axis=axis)/np.nansum(weights, axis=axis)
+    variance = np.nansum(((values-average)**2)*weights, axis=axis)/np.nansum(weights, axis=axis)
     return (average, np.sqrt(variance))
 
 def metrics(A, transparency, DHP, clusToInd, metadata):
-    # allocs = DHP.particles[0].docs2cluster_ID
-    # un, cntpop = np.unique(allocs, return_counts=True)
-    # un = [u for _, u in sorted(zip(cntpop, un), reverse=True)]
-    #
-    # cntpop = [c for c, u in sorted(zip(cntpop, un), reverse=True)]
-    # avgpop = np.mean(cntpop)
-    # stdpop = np.std(cntpop)
-    # numclus = len(un)
-    # top20clus = un[:20]
-    #
-    # unbase, distbase = np.unique(metadata, return_counts=True)
-    # distbase = np.array([ds for _, ds in sorted(zip(unbase, distbase))])
-    # unbase = np.array([s for s, ds in sorted(zip(unbase, distbase))])
-    # distbase = distbase/np.sum(distbase)
-    #
-    # Stext = []
-    # SSub = []
-    # devSubs = []
-    # weigth = []
-    # for i in range(len(top20clus)):
-    #     # distText = DHP.particles[0].clusters[top20clus[i]].word_distribution
-    #     # distText = distText/float(np.sum(distText))
-    #
-    #     subs, distSubs = np.unique(metadata[DHP.particles[0].docs2cluster_ID==top20clus[i]], return_counts=True)
-    #     if len(subs)<len(unbase):
-    #         subs, distSubs = list(subs), list(distSubs)
-    #         for u in unbase:
-    #             if u not in subs:
-    #                 subs.append(u)
-    #                 distSubs.append(1e-20)
-    #         subs, distSubs = np.array(subs), np.array(distSubs)
-    #     distSubs = np.array([ds for _, ds in sorted(zip(subs, distSubs))])
-    #     subs = np.array([s for s, ds in sorted(zip(subs, distSubs))])
-    #     distSubs = distSubs/float(np.sum(distSubs))
-    #
-    #     # Stext.append(np.sum(distText*np.log(distText+1e-20))/np.log(1./len(distText)))
-    #     SSub.append(np.sum(distSubs*np.log(distSubs))/np.log(1./len(distSubs)))
-    #     Stext.append(0)
-    #     weigth.append(cntpop[i])
-    #
-    # avgStext, stdStext = weighted_avg_and_std(Stext, weigth)
-    # avgSSub, stdSSub = weighted_avg_and_std(SSub, weigth)
-    #
-    # txt = ""
-    # if r>=1e-5:
-    #     txt += "& "
-    # txt += f"& {np.round(r, 1)} & {int(np.round(numclus, 0))} " \
-    #        f"& {int(np.round(avgpop, 0))} " \
-    #        f"& {np.round(avgStext, 3)}({int(np.round(stdStext*1e3, 0))}) " \
-    #        f"& {np.round(avgSSub, 3)}({int(np.round(stdSSub*1e3, 0))}) \\\\"
-    # print(txt)
+    metric = "interDyn"
 
-    effective_interaction = transparency.copy()
+    if metric == "globalstats":
+        allocs = DHP.particles[0].docs2cluster_ID
+        un, cntpop = np.unique(allocs, return_counts=True)
+        un = [u for _, u in sorted(zip(cntpop, un), reverse=True)]
 
-    effective_interaction[A<1e-10] = np.nan
-    A[A<1e-10] = np.nan
-    A[effective_interaction<1e-10] = np.nan
-    effective_interaction[effective_interaction<1e-10] = np.nan
+        cntpop = [c for c, u in sorted(zip(cntpop, un), reverse=True)]
+        avgpop = np.mean(cntpop)
+        stdpop = np.std(cntpop)
+        numclus = len(un)
+        top20clus = un[:20]
 
-    for c in clusToInd:
-        effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
-    effective_interaction[effective_interaction<0] = 0
+        unbase, distbase = np.unique(metadata, return_counts=True)
+        distbase = np.array([ds for _, ds in sorted(zip(unbase, distbase))])
+        unbase = np.array([s for s, ds in sorted(zip(unbase, distbase))])
+        distbase = distbase/np.sum(distbase)
 
+        Stext = []
+        SSub = []
+        devSubs = []
+        weigth = []
+        for i in range(len(top20clus)):
+            # distText = DHP.particles[0].clusters[top20clus[i]].word_distribution
+            # distText = distText/float(np.sum(distText))
 
+            subs, distSubs = np.unique(metadata[DHP.particles[0].docs2cluster_ID==top20clus[i]], return_counts=True)
+            if len(subs)<len(unbase):
+                subs, distSubs = list(subs), list(distSubs)
+                for u in unbase:
+                    if u not in subs:
+                        subs.append(u)
+                        distSubs.append(1e-20)
+                subs, distSubs = np.array(subs), np.array(distSubs)
+            distSubs = np.array([ds for _, ds in sorted(zip(subs, distSubs))])
+            subs = np.array([s for s, ds in sorted(zip(subs, distSubs))])
+            distSubs = distSubs/float(np.sum(distSubs))
 
-    meanA = np.nanmean(A)
-    stdA = np.nanstd(A)
+            # Stext.append(np.sum(distText*np.log(distText+1e-20))/np.log(1./len(distText)))
+            SSub.append(np.sum(distSubs*np.log(distSubs))/np.log(1./len(distSubs)))
+            Stext.append(0)
+            weigth.append(cntpop[i])
 
-    meanW = np.nanmean(effective_interaction)
-    stdW = np.nanstd(effective_interaction)
+        avgStext, stdStext = weighted_avg_and_std(Stext, weigth)
+        avgSSub, stdSSub = weighted_avg_and_std(SSub, weigth)
 
-    meanAW = np.nanmean(A*effective_interaction)
-    stdAW = np.nanstd(A*effective_interaction)
-    meanAWDiag = np.nanmean(np.diagonal(A*effective_interaction, axis1=0, axis2=1))
-    stdAWDiag = np.nanstd(np.diagonal(A*effective_interaction, axis1=0, axis2=1))
+        txt = ""
+        if r>=1e-5:
+            txt += "& "
+        txt += f"& {np.round(r, 1)} & {int(np.round(numclus, 0))} " \
+               f"& {int(np.round(avgpop, 0))} " \
+               f"& {np.round(avgStext, 3)}({int(np.round(stdStext*1e3, 0))}) " \
+               f"& {np.round(avgSSub, 3)}({int(np.round(stdSSub*1e3, 0))}) \\\\"
+        print(txt)
 
-    meanAW, stdAW = weighted_avg_and_std(A.flatten(), effective_interaction.flatten())
+    if metric == "interStrength":
+        effective_interaction = transparency.copy()
 
-    meanAWDiag, stdAWDiag = weighted_avg_and_std(np.diagonal(A, axis1=0, axis2=1).flatten(), np.diagonal(effective_interaction, axis1=0, axis2=1).flatten())
+        effective_interaction[A<1e-10] = np.nan
+        A[A<1e-10] = np.nan
+        A[effective_interaction<1e-10] = np.nan
+        effective_interaction[effective_interaction<1e-10] = np.nan
 
-    meanWDiag = np.nanmean(np.diagonal(effective_interaction, axis1=0, axis2=1))
-    stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1))
+        for c in clusToInd:
+            effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+        effective_interaction[effective_interaction<0] = 0
 
-    errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+        meanA = np.nanmean(A)
+        stdA = np.nanstd(A)
 
-    txt = ""
-    if r>=1e-5:
-        txt += "& "
-    txt += f"& {np.round(r, 1)} " \
-           f"& {np.round(meanA*1e2, 0)}({np.round(stdA*1e2, 0)}) " \
-           f"& {np.round(meanW*1e5, 0)}({np.round(stdW*1e5, 0)}) " \
-           f"& {np.round(meanAW*1e2, 0)}({np.round(stdAW*1e2, 0)}) " \
-           f"& {np.round((meanWDiag/meanW), 1)}({np.round(errDiag*1e1, 0)}) \\\\"
-    print(txt)
+        meanW = np.nanmean(effective_interaction)
+        stdW = np.nanstd(effective_interaction)
+
+        meanAW, stdAW = weighted_avg_and_std(A, effective_interaction)
+
+        meanWDiag = np.nanmean(np.diagonal(effective_interaction, axis1=0, axis2=1))
+        stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1))
+
+        errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+
+        txt = ""
+        if r>=1e-5:
+            txt += "& "
+        txt += f"& {np.round(r, 1)} " \
+               f"& {np.round(meanA*1e2, 0)}({np.round(stdA*1e2, 0)}) " \
+               f"& {np.round(meanW*1e5, 0)}({np.round(stdW*1e5, 0)}) " \
+               f"& {np.round(meanAW*1e2, 0)}({np.round(stdAW*1e2, 0)}) " \
+               f"& {np.round((meanWDiag/meanW), 1)}({np.round(errDiag*1e1, 0)}) \\\\"
+        print(txt)
+
+    if metric == "interDyn":
+        effective_interaction = transparency.copy()
+
+        effective_interaction[A<1e-10] = np.nan
+        A[A<1e-10] = np.nan
+        A[effective_interaction<1e-10] = np.nan
+        effective_interaction[effective_interaction<1e-10] = np.nan
+
+        for c in clusToInd:
+            effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+        effective_interaction[effective_interaction<0] = 0
+
+        meanA = np.nanmean(A, axis=(0,1))
+        stdA = np.nanstd(A, axis=(0,1))
+
+        meanW = np.nanmean(effective_interaction, axis=(0,1))
+        stdW = np.nanstd(effective_interaction, axis=(0,1))
+
+        meanAW, stdAW = weighted_avg_and_std(A, effective_interaction, axis=(0,1))
+
+        meanWDiag = np.nanmean(np.diagonal(effective_interaction, axis1=0, axis2=1), axis=(1))  # Diag renvoie l'array inversée, jsp pourquoi
+        stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1), axis=(1))
+
+        errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+
+        txt = ""
+        pad = ""
+        for _ in range(len(meanW), 9):
+            pad += "& "
+        if r>=1e-5:
+            txt += "& "
+        txt += f"& {np.round(r, 1)} " \
+               f"& {' & '.join(list(map(str, np.round(meanW*1e5, 0))))} " \
+               f"{pad}\\\\"
+        print(txt)
 
 if __name__=="__main__":
     try:
@@ -1703,12 +1737,12 @@ if __name__=="__main__":
 
         try:
             timescale = sys.argv[3]
-            arrThetas = [0.01, 0.001]
+            arrThetas = [0.01]
             arrR = [1., 0.5, 0., 1.5]
-            listThres = [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
+            listThres = [("_all", 10, 100000)]#, ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
-            timescale = "d"
-            arrThetas = [0.001]#, 0.001]
+            timescale = "h"
+            arrThetas = [0.01]#, 0.001]
             arrR = [0., 0.5, 1., 1.5, ]
             listThres = [("_all", 10, 100000)]
 
@@ -1786,18 +1820,19 @@ if __name__=="__main__":
                     try:
                         pass
                         #DHP = fill_clusters(DHP, consClus)
-
-                        A = np.load(results_folder+name_output_res+"_adjacency.npy")
-                        transparency = np.load(results_folder+name_output_res+"_transparency.npy")
-                        #transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
-                        with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
-                            clusToInd = pickle.load(f)
-
-                        #print("Computing metrics")
-                        metrics(A, transparency, DHP, clusToInd, metadata)
+                    except Exception as e:
+                        print(e)
                         continue
-                    except:
-                        continue
+
+                    A = np.load(results_folder+name_output_res+"_adjacency.npy")
+                    transparency = np.load(results_folder+name_output_res+"_transparency.npy")
+                    #transparency_permonth = np.load(results_folder+name_output_res+"_transparency_permonth.npy")
+                    with open(results_folder+name_output_res+"_clusToInd.pkl", 'rb') as f:
+                        clusToInd = pickle.load(f)
+
+                    #print("Computing metrics")
+                    metrics(A, transparency, DHP, clusToInd, metadata)
+                    continue
 
                     # print("Computing timeline")
                     # plotTimeline(observations, "temp/"+results_folder, name_output_res, DHP, indexToWd, consClus, numClusPerMonth=10)
