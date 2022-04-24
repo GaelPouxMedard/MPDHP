@@ -562,8 +562,8 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
     monthIndex = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
     for i in range(len(ax)):
         for j in range(len(ax[i])):
-            ax[i,j].set_ylabel(monthIndex[indexes_month[i]-1], fontsize=4*scale)
-            ax[i,j].set_xlabel(f"Influence at {means[j]}min", fontsize=4*scale)
+            ax[i,j].set_ylabel(monthIndex[indexes_month[i]-1], fontsize=8*scale)
+            ax[i,j].set_xlabel(f"Influence at {means[j]}min", fontsize=8*scale)
 
     for a in ax.flat:
         a.label_outer()
@@ -1856,7 +1856,7 @@ if __name__=="__main__":
 
         try:
             timescale = sys.argv[3]
-            arrThetas = [0.001]#, 0.001]
+            arrThetas = [0.01]#, 0.001]
             arrR = [1., 0.5, 0., 1.5]
             listThres = [("_all", 10, 100000)]#, ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
