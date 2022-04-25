@@ -563,7 +563,7 @@ def plotGraphGlobEveryMonth(observations, A, transparency, transparency_permonth
     for i in range(len(ax)):
         for j in range(len(ax[i])):
             ax[i,j].set_ylabel(monthIndex[indexes_month[i]-1], fontsize=8*scale)
-            ax[i,j].set_xlabel(f"Influence at {means[j]}min", fontsize=8*scale)
+            ax[i,j].set_xlabel(f"Influence at {means[j]}min", fontsize=4*scale)
 
     for a in ax.flat:
         a.label_outer()
