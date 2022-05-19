@@ -742,13 +742,12 @@ def metrics(A, transparency, DHP, clusToInd, metadata):
     if metric == "interStrength":
         effective_interaction = transparency.copy()
 
-        effective_interaction[A<1e-10] = np.nan
-        A[A<1e-10] = np.nan
-        A[effective_interaction<1e-10] = np.nan
-        effective_interaction[effective_interaction<1e-10] = np.nan
+        effective_interaction[A<1e-20] = np.nan
+        A[A<1e-20] = np.nan
+        A[effective_interaction<1e-20] = np.nan
+        effective_interaction[effective_interaction<1e-20] = np.nan
 
-        for c in clusToInd:
-            effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+        effective_interaction -= lamb0_poisson
         effective_interaction[effective_interaction<0] = 0
 
         meanA = np.nanmean(A)
@@ -757,12 +756,20 @@ def metrics(A, transparency, DHP, clusToInd, metadata):
         meanW = np.nanmean(effective_interaction)
         stdW = np.nanstd(effective_interaction)
 
+        effective_interactiondiag = np.diagonal(effective_interaction.copy(), axis1=0, axis2=1)
+        effective_interactionssdiag = effective_interaction.copy()
+        for i in range(len(effective_interaction)):
+            effective_interactionssdiag[i,i] *= 0
+        meanWssDiag = np.nanmean(effective_interactionssdiag)
+        stdWssDiag = np.nanstd(effective_interactionssdiag)
+        meanWDiag = np.nanmean(effective_interactiondiag)
+        stdWDiag = np.nanstd(effective_interactiondiag)
+
         meanAW, stdAW = weighted_avg_and_std(A, effective_interaction)
+        meanAWDiag, stdAWDiag = weighted_avg_and_std(np.diagonal(A, axis1=0, axis2=1), np.diagonal(effective_interaction, axis1=0, axis2=1))
 
-        meanWDiag = np.nanmean(np.diagonal(effective_interaction, axis1=0, axis2=1))
-        stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1))
 
-        errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+        errDiag = (meanWDiag/meanWssDiag)*np.sqrt((stdWssDiag/(meanWssDiag))**2+(stdWDiag/meanWDiag)**2)
 
         txt = ""
         if r>=1e-5:
@@ -771,7 +778,7 @@ def metrics(A, transparency, DHP, clusToInd, metadata):
                f"& {np.round(meanA*1e2, 0)}({np.round(stdA*1e2, 0)}) " \
                f"& {np.round(meanW*1e5, 0)}({np.round(stdW*1e5, 0)}) " \
                f"& {np.round(meanAW*1e2, 0)}({np.round(stdAW*1e2, 0)}) " \
-               f"& {np.round((meanWDiag/meanW), 1)}({np.round(errDiag*1e1, 0)}) \\\\"
+               f"& {np.round((meanWDiag/meanWssDiag), 1)}({np.round(errDiag*1e1, 0)}) \\\\"
         print(txt)
 
     if metric == "interDyn":
@@ -782,8 +789,7 @@ def metrics(A, transparency, DHP, clusToInd, metadata):
         A[effective_interaction<1e-10] = np.nan
         effective_interaction[effective_interaction<1e-10] = np.nan
 
-        for c in clusToInd:
-            effective_interaction[clusToInd[c]] -= lamb0_poisson/DHP.particles[0].docs2cluster_ID.count(c)
+        effective_interaction -= lamb0_poisson
         effective_interaction[effective_interaction<0] = 0
 
         meanA = np.nanmean(A, axis=(0,1))
@@ -798,6 +804,8 @@ def metrics(A, transparency, DHP, clusToInd, metadata):
         stdWDiag = np.nanstd(np.diagonal(effective_interaction, axis1=0, axis2=1), axis=(1))
 
         errDiag = (meanWDiag/meanW)*np.sqrt((stdWDiag/(meanWDiag))**2+(stdW/meanW)**2)
+
+        meanW[0] *= 2
 
         txt = ""
         pad = ""
@@ -911,7 +919,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR[i_r].append(np.nan)
@@ -1028,7 +1036,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR[i_r].append(np.nan)
@@ -1134,7 +1142,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR[i_r].append(np.nan)
@@ -1239,7 +1247,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR_txt[i_r].append(np.nan)
@@ -1400,7 +1408,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR[i_r].append(np.nan)
@@ -1523,7 +1531,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR[i_r].append(np.nan)
@@ -1651,7 +1659,7 @@ if __name__=="__main__":
                                               f"_samplenum={sample_num}_particlenum={particle_num}"
 
                                 try:
-                                    DHP = read_particles(output_folder_final, name_output, get_clusters=False)
+                                    DHP = read_particles(output_folder_final, name_output)
                                 except Exception as e:
                                     print(f"Output not found - {e}")
                                     arrResR.append(np.nan)
@@ -1741,8 +1749,8 @@ if __name__=="__main__":
             arrR = [1., 0.5, 0., 1.5]
             listThres = [("_all", 10, 100000), ("_mediumclus", 50, 10000), ("_bigclus", 500, 100000)]
         except:
-            timescale = "h"
-            arrThetas = [0.01]#, 0.001]
+            timescale = "d"
+            arrThetas = [0.001]#, 0.001]
             arrR = [0., 0.5, 1., 1.5, ]
             listThres = [("_all", 10, 100000)]
 
